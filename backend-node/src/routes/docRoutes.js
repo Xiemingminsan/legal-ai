@@ -88,5 +88,22 @@ router.delete('/:id', authMiddleware, async (req, res) => {
   }
 });
 
+// GET /api/documents/:id
+router.get('/:id', authMiddleware, async (req, res) => {
+  try {
+    const docId = req.params.id;
+    const document = await Document.findById(docId);
+
+    if (!document) {
+      return res.status(404).json({ msg: 'Document not found' });
+    }
+
+    res.json(document);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ msg: 'Server error' });
+  }
+});
+
 
 module.exports = router;
