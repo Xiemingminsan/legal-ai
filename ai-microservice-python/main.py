@@ -1,3 +1,4 @@
+import datetime
 import os
 import uvicorn
 import faiss
@@ -11,6 +12,10 @@ from sentence_transformers import SentenceTransformer
 from typing import List, Dict
 from pathlib import Path
 import logging
+from typing import List,Dict, Any
+
+
+
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -23,7 +28,7 @@ app = FastAPI()
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:5000"],  # Add your frontend URL
+    allow_origins=["http://localhost:5173", "http://localhost:5000, http://localhost:8000 "],  # Add your frontend URL
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -79,7 +84,7 @@ class DocumentProcessor:
             all_embeddings.append(embeddings)
             
         return np.vstack(all_embeddings)
-
+    
 @app.post("/embed_document")
 async def embed_document(doc_id: str = Form(...), pdf_path: str = Form(...)):
     try:
@@ -107,11 +112,19 @@ async def embed_document(doc_id: str = Form(...), pdf_path: str = Form(...)):
         
         # Store metadata
         start_idx = len(documents_store)
+        current_time = datetime.datetime.utcnow().isoformat()
+        
+        # Get filename from path to use as title if needed
+        filename = os.path.basename(pdf_path)
+        
         for chunk in chunks:
             documents_store.append({
                 "doc_id": doc_id,
+                "title": filename,
                 "text": chunk,
-                "index": start_idx + len(documents_store)
+                "index": start_idx + len(documents_store),
+                "uploadDate": current_time,
+                "status": "completed"
             })
         
         return {
@@ -124,6 +137,28 @@ async def embed_document(doc_id: str = Form(...), pdf_path: str = Form(...)):
         logger.error(f"Error processing document: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/documents/{doc_id}/status")
+async def get_document_status(doc_id: str):
+    try:
+        # Find all chunks for this document
+        doc_chunks = [doc for doc in documents_store if doc["doc_id"] == doc_id]
+        
+        if not doc_chunks:
+            return {
+                "status": "not_found",
+                "progress": 0
+            }
+            
+        # Return the status of the document
+        return {
+            "status": doc_chunks[0].get("status", "processing"),
+            "progress": 100 if doc_chunks[0].get("status") == "completed" else 0
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting document status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    
 @app.post("/search")
 async def search_similar_chunks(query: str = Form(...), top_k: int = Form(3)):
     try:
@@ -150,6 +185,77 @@ async def search_similar_chunks(query: str = Form(...), top_k: int = Form(3)):
     except Exception as e:
         logger.error(f"Search error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/faiss/index")
+async def get_faiss_index():
+    try:
+        # Assuming faiss_index is a global variable or accessible here
+        global faiss_index
+        if faiss_index is None:
+            raise HTTPException(status_code=404, detail="FAISS index not found")
+
+        index_info = {
+            "dimension": faiss_index.d,
+            "number_of_vectors": faiss_index.ntotal,
+            "metric": faiss_index.metric_type,  # e.g., faiss.METRIC_L2
+            # Add more details as needed
+        }
+
+        return {"faiss_index": index_info}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/faiss/documents")
+async def list_faiss_documents() -> Dict[str, List[Dict[str, Any]]]:
+    try:
+        documents = []
+        # Assuming faiss_index and documents_store are properly initialized
+        for idx in range(faiss_index.ntotal):
+            doc_metadata = documents_store[idx]
+            
+            # Create document entry without embedding by default
+            document = {
+                "index": idx,
+                "doc_id": doc_metadata["doc_id"],
+                "title": doc_metadata["title"],
+                "uploadDate": doc_metadata["uploadDate"],
+                "text": doc_metadata["text"]
+            }
+            documents.append(document)
+            
+        return {"documents": documents}
+        
+    except KeyError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Missing required metadata field: {str(e)}"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+@app.delete("/faiss/clear")
+async def clear_faiss_index():
+    global faiss_index, documents_store
+    try:
+        # Reset the FAISS index
+        dimension = faiss_index.d  # Preserve current FAISS index dimensions
+        faiss_index = faiss.IndexFlatL2(dimension)
+        
+        # Clear the document store
+        documents_store.clear()
+        
+        return {
+            "status": "success",
+            "message": "FAISS index and documents cleared"
+        }
+    except Exception as e:
+        logger.error(f"Error clearing FAISS index: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

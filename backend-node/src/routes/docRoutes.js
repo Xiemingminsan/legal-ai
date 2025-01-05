@@ -121,31 +121,6 @@ router.get('/', authMiddleware, async (req, res) => {
   }
 });
 
-// DELETE /api/documents/:id
-router.delete('/:id', authMiddleware, async (req, res) => {
-  try {
-    const docId = req.params.id;
-    const doc = await Document.findById(docId);
-
-    if (!doc) {
-      return res.status(404).json({ msg: 'Document not found' });
-    }
-
-    // If not admin, ensure the doc belongs to the user
-    if (req.user.role !== 'admin' && doc.uploaderId.toString() !== req.user.userId) {
-      return res.status(403).json({ msg: 'Not authorized' });
-    }
-
-    // Use deleteOne or findByIdAndDelete instead of remove()
-    await Document.deleteOne({ _id: docId });
-
-    res.json({ msg: 'Document deleted' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ msg: 'Server error' });
-  }
-});
-
 // GET /api/documents/:id
 router.get('/:id', authMiddleware, async (req, res) => {
   try {
@@ -185,4 +160,53 @@ router.get('/:id/status', authMiddleware, async (req, res) => {
   }
 });
 
+// DELETE /api/documents/deleteAll
+router.delete('/deleteAll', authMiddleware, async (req, res) => {
+    // Find all documents to get file paths
+    const documents = await Document.find({});
+    const filePaths = documents.map(doc => doc.filePath);
+
+    // Delete files from the server
+    for (const filePath of filePaths) {
+      const fullPath = path.resolve(filePath);
+      if (fs.existsSync(fullPath)) {
+        try {
+          fs.unlinkSync(fullPath); // Synchronously delete the file
+        } catch (error) {
+          console.error(`Error deleting file at ${fullPath}:`, error);
+        }
+      }
+    }
+
+    // Delete all documents from the database
+    await Document.deleteMany({});
+
+    res.json({ msg: 'All documents and their files have been deleted' });
+  
+});
+
+// DELETE /api/documents/:id
+router.delete('/:id', authMiddleware, async (req, res) => {
+  try {
+    const docId = req.params.id;
+    const doc = await Document.findById(docId);
+
+    if (!doc) {
+      return res.status(404).json({ msg: 'Document not found' });
+    }
+
+    // If not admin, ensure the doc belongs to the user
+    if (req.user.role !== 'admin' && doc.uploaderId.toString() !== req.user.userId) {
+      return res.status(403).json({ msg: 'Not authorized' });
+    }
+
+    // Use deleteOne or findByIdAndDelete instead of remove()
+    await Document.deleteOne({ _id: docId });
+
+    res.json({ msg: 'Document deleted' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ msg: 'Server error' });
+  }
+});
 module.exports = router;
