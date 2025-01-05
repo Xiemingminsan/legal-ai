@@ -1,115 +1,85 @@
-// src/routes/chatRoutes.js
 const express = require('express');
-const authMiddleware = require('../middlewares/authMiddleware');
-const ChatHistory = require('../models/ChatHistory');
-const axios = require('axios');
-
 const router = express.Router();
-
-// GET /api/chat/history - get all conversation entries for this user
-router.get('/history', authMiddleware, async (req, res) => {
-  try {
-    const chatRecords = await ChatHistory.find({ userId: req.user.userId }).sort({ createdAt: -1 });
-    res.json(chatRecords);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ msg: 'Server error' });
-  }
-});
-
-// POST /api/chat/message - add a new user message
-router.post('/message', authMiddleware, async (req, res) => {
-  try {
-    const { conversationId, userMessage } = req.body;
-
-    let chat;
-    if (!conversationId) {
-      // create new conversation
-      chat = new ChatHistory({
-        userId: req.user.userId,
-        conversation: [{ role: 'user', text: userMessage }],
-      });
-    } else {
-      // update existing conversation
-      chat = await ChatHistory.findById(conversationId);
-      if (!chat) {
-        return res.status(404).json({ msg: 'Conversation not found' });
-      }
-      if (chat.userId.toString() !== req.user.userId) {
-        return res.status(403).json({ msg: 'Not authorized' });
-      }
-      chat.conversation.push({ role: 'user', text: userMessage });
-    }
-
-    await chat.save();
-    res.json(chat);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ msg: 'Server error' });
-  }
-});
-
-// POST /api/chat/assistant - store an assistant’s reply (placeholder for now)
-router.post('/assistant', authMiddleware, async (req, res) => {
-  try {
-    const { conversationId, assistantMessage } = req.body;
-
-    const chat = await ChatHistory.findById(conversationId);
-    if (!chat) {
-      return res.status(404).json({ msg: 'Conversation not found' });
-    }
-
-    if (chat.userId.toString() !== req.user.userId) {
-      return res.status(403).json({ msg: 'Not authorized' });
-    }
-
-    chat.conversation.push({ role: 'assistant', text: assistantMessage });
-    await chat.save();
-
-    res.json(chat);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ msg: 'Server error' });
-  }
-});
-
-router.get('/conversations', authMiddleware, async (req, res) => {
-  try {
-    const chatConversations = await ChatHistory.find({ userId: req.user.userId }).sort({ createdAt: -1 });
-
-    if (!chatConversations || chatConversations.length === 0) {
-      return res.status(404).json({ msg: 'No conversations found' });
-    }
-
-    res.json(chatConversations);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ msg: 'Server error' });
-  }
-});
+const authMiddleware = require('../middlewares/authMiddleware');
+const axios = require('axios');
+const ChatHistory = require('../models/ChatHistory');
 
 router.post('/ask-ai', authMiddleware, async (req, res) => {
-  try {
-    const { query } = req.body;
-    const aiServiceUrl = process.env.AI_SERVICE_URL;
+    try {
+        const { query, conversationId } = req.body;
+        const userId = req.user.userId;
 
-    const response = await axios.post(`${aiServiceUrl}/qa`, {
-      query: query,
-      top_k: 3
-    });
+        console.log('User query:', query);
 
-    // response.data will have { answer, chunksUsed }
-    const aiAnswer = response.data.answer;
+        if (!query || !query.trim()) {
+            return res.status(400).json({ msg: 'ya, Query cannot be empty' });
+        }
 
-    // If you want, store it in ChatHistory:
-    // e.g., conversationId, userMessage => user, AI => assistant
-    // For now just return the AI answer
-    return res.json({ answer: aiAnswer });
-  } catch (err) {
-    console.error(err.message);
-    return res.status(500).json({ msg: 'Error calling AI service' });
-  }
+        // Find or create a conversation
+        let conversation;
+        if (conversationId) {
+            conversation = await ChatHistory.findById(conversationId);
+            if (!conversation) {
+                return res.status(404).json({ msg: 'Conversation not found' });
+            }
+            if (conversation.userId.toString() !== userId) {
+                return res.status(403).json({ msg: 'Not authorized' });
+            }
+        } else {
+            conversation = new ChatHistory({
+                userId: userId,
+                conversation: []
+            });
+        }
+
+        // Add user message to conversation
+        conversation.conversation.push({ role: 'user', text: query });
+
+        await conversation.save();
+
+        // Prepare data for AI microservice
+        const aiServiceUrl = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+        console.log('AI service URL:', aiServiceUrl);
+        const aiEndpoint = `${aiServiceUrl}/qa`;
+
+        // Send query to AI microservice
+        const aiResponse = await axios.post(aiEndpoint, new URLSearchParams({
+            query: query,
+            top_k: 3
+        }), {
+            headers: { 
+                'Content-Type': 'application/x-www-form-urlencoded' 
+            }
+        });
+
+        const aiAnswer = aiResponse.data.answer;
+
+        // Add AI response to conversation
+        conversation.conversation.push({ role: 'assistant', text: aiAnswer });
+
+        await conversation.save();
+
+        // Return the updated conversation
+        res.json({
+            conversationId: conversation._id,
+            conversation: conversation.conversation
+        });
+
+    } catch (error) {
+        console.error('Error in /ask-ai:', error.message);
+        res.status(500).json({ msg: 'Server error in AI communication' });
+    }
 });
 
+router.get('/history', authMiddleware, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const conversations = await ChatHistory.find({ userId: userId }).sort({ createdAt: -1 });
+        res.json(conversations);
+    } catch (error) {
+        console.error('Error fetching chat history:', error.message);
+        res.status(500).json({ msg: 'Server error fetching chat history' });
+    }
+});
 
 module.exports = router;

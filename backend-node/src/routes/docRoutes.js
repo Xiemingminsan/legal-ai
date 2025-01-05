@@ -20,10 +20,17 @@ const storage = multer.diskStorage({
     cb(null, uniqueSuffix + path.extname(file.originalname));
   },
 });
-const upload = multer({ storage });
+const upload = multer({ 
+  storage,
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype !== 'application/pdf') {
+      return cb(new Error('Only PDF files are allowed'), false);
+    }
+    cb(null, true);
+  }
+});
 
-// POST /api/documents/uploadconst FormData = require('form-data'); // Ensure to install `form-data` library
-
+// POST /api/documents/upload
 router.post('/upload', authMiddleware, upload.single('file'), async (req, res) => {
   try {
     const { title } = req.body;
@@ -37,13 +44,8 @@ router.post('/upload', authMiddleware, upload.single('file'), async (req, res) =
     if (!file) {
       return res.status(400).json({ msg: 'No file uploaded' });
     }
-    
-    // Validate file type
-    if (!file.mimetype.includes('pdf')) {
-      return res.status(400).json({ msg: 'Only PDF files are supported' });
-    }
-    
-    // Create document record
+
+    // Create document record with initial status
     const newDoc = new Document({
       title,
       filePath: file.path,
@@ -77,11 +79,18 @@ router.post('/upload', authMiddleware, upload.single('file'), async (req, res) =
       const form = new FormData();
       form.append('doc_id', newDoc._id.toString());
       form.append('pdf_path', pdfFullPath);
+
+      console.log("Sending request to AI service...");
+      console.log("Document ID:", newDoc._id.toString());
+
       
       const response = await axios.post(`${aiServiceUrl}/embed_document`, form, {
         headers: form.getHeaders(),
         timeout: 300000 // 5 minute timeout
       });
+
+      console.log("AI service response:", response.data);
+
       
       // Update document status on success
       newDoc.status = 'completed';
@@ -106,7 +115,7 @@ router.post('/upload', authMiddleware, upload.single('file'), async (req, res) =
   }
 });
 
-// GET /api/documents (list user’s docs or all if admin)
+// GET /api/documents
 router.get('/', authMiddleware, async (req, res) => {
   try {
     const query = req.user.role === 'admin'
@@ -138,11 +147,12 @@ router.get('/:id', authMiddleware, async (req, res) => {
   }
 });
 
+// GET /api/documents/:id/status
 router.get('/:id/status', authMiddleware, async (req, res) => {
   try {
     const docId = req.params.id;
 
-    // Validate docId format (optional but recommended)
+    // Validate docId format
     if (!docId.match(/^[0-9a-fA-F]{24}$/)) {
       return res.status(400).json({ msg: 'Invalid document ID format.' });
     }
@@ -162,27 +172,32 @@ router.get('/:id/status', authMiddleware, async (req, res) => {
 
 // DELETE /api/documents/deleteAll
 router.delete('/deleteAll', authMiddleware, async (req, res) => {
-    // Find all documents to get file paths
-    const documents = await Document.find({});
-    const filePaths = documents.map(doc => doc.filePath);
+    try {
+        // Find all documents to get file paths
+        const documents = await Document.find({});
+        const filePaths = documents.map(doc => doc.filePath);
 
-    // Delete files from the server
-    for (const filePath of filePaths) {
-      const fullPath = path.resolve(filePath);
-      if (fs.existsSync(fullPath)) {
-        try {
-          fs.unlinkSync(fullPath); // Synchronously delete the file
-        } catch (error) {
-          console.error(`Error deleting file at ${fullPath}:`, error);
+        // Delete files from the server
+        for (const filePath of filePaths) {
+          const fullPath = path.resolve(filePath);
+          if (fs.existsSync(fullPath)) {
+            try {
+              fs.unlinkSync(fullPath); // Synchronously delete the file
+            } catch (error) {
+              console.error(`Error deleting file at ${fullPath}:`, error);
+            }
+          }
         }
-      }
+
+        // Delete all documents from the database
+        await Document.deleteMany({});
+
+        res.json({ msg: 'All documents and their files have been deleted' });
+      
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ msg: 'Server error' });
     }
-
-    // Delete all documents from the database
-    await Document.deleteMany({});
-
-    res.json({ msg: 'All documents and their files have been deleted' });
-  
 });
 
 // DELETE /api/documents/:id
@@ -200,7 +215,17 @@ router.delete('/:id', authMiddleware, async (req, res) => {
       return res.status(403).json({ msg: 'Not authorized' });
     }
 
-    // Use deleteOne or findByIdAndDelete instead of remove()
+    // Delete the file from the server
+    const fullPath = path.resolve(doc.filePath);
+    if (fs.existsSync(fullPath)) {
+      try {
+        fs.unlinkSync(fullPath);
+      } catch (error) {
+        console.error(`Error deleting file at ${fullPath}:`, error);
+      }
+    }
+
+    // Delete the document record
     await Document.deleteOne({ _id: docId });
 
     res.json({ msg: 'Document deleted' });
@@ -209,4 +234,5 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     res.status(500).json({ msg: 'Server error' });
   }
 });
+
 module.exports = router;

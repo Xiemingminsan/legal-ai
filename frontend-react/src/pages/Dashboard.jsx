@@ -275,6 +275,12 @@ function Dashboard() {
         >
           View FAISS Index
         </button>
+        <button
+          onClick={() => navigate('/chat')}
+          style={styles.navButton}
+        >
+          Chat with AI
+        </button>
       </div>
     </div>
   );

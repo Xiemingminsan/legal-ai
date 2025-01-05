@@ -1,205 +1,163 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import { Send, Bot, User } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import './ChatPage.css';
 
-  function ChatPage() {
-    const [conversationId, setConversationId] = useState(null);
-    const [messages, setMessages] = useState([]);
+const ChatPage = () => {
+    const [messages, setMessages] = useState([
+        { role: 'ai', text: "Hello! I'm Legal-God AI. How can I assist you with your legal questions today?" }
+    ]);
     const [userMessage, setUserMessage] = useState('');
-    const token = localStorage.getItem('token');
-  
-    useEffect(() => {
-      fetchChatHistory();
-      // eslint-disable-next-line
-    }, []);
-  
-    const fetchChatHistory = async () => {
-      try {
-        const { data } = await axios.get('http://localhost:5000/api/chat/history', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (data.length > 0) {
-          setConversationId(data[0]._id);
-          setMessages(data[0].messages);
+    const [isLoading, setIsLoading] = useState(false);
+    const [conversationId, setConversationId] = useState(null);
+    const messagesEndRef = useRef(null);
+    const navigate = useNavigate();
+
+    // Function to send message to backend
+    const sendMessage = async (e) => {
+        e.preventDefault();
+        if (!userMessage.trim()) return;
+    
+        try {
+            // Add user message to UI immediately
+            setMessages(prev => [...prev, { role: 'user', text: userMessage }]);
+            setIsLoading(true);
+            setUserMessage('');
+    
+            // Get the token from localStorage
+            const token = localStorage.getItem('token'); // or get it from your app's state
+    
+            console.log('Token:', token);
+    
+            // Send request to backend using axios
+            const response = await axios.post(
+                'http://localhost:5000/api/chat/ask-ai', // Updated backend URL
+                {
+                    query: userMessage,
+                    conversationId: conversationId,
+                },
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`, // Add the token to headers
+                    },
+                }
+            );
+    
+            const data = response.data;
+    
+            // Update conversation ID if it's a new conversation
+            if (data.conversationId && !conversationId) {
+                setConversationId(data.conversationId);
+            }
+    
+            // Get the latest AI response
+            const latestMessage = data.conversation[data.conversation.length - 1];
+            if (latestMessage && latestMessage.role === 'assistant') {
+                setMessages(prev => [...prev, { role: 'ai', text: latestMessage.text }]);
+            }
+    
+        } catch (error) {
+            console.error('Error sending message:', error);
+            setMessages(prev => [
+                ...prev,
+                {
+                    role: 'ai',
+                    text: "I apologize, but I'm having trouble processing your request. Please try again.",
+                },
+            ]);
+        } finally {
+            setIsLoading(false);
         }
-      } catch (err) {
-        console.error(err.response?.data?.msg || err.message);
-        alert(err.response?.data?.msg || 'Failed to fetch chat history');
-      }
     };
-  
-    const sendMessage = async () => {
-      if (userMessage.trim() === '') return;
-      try {
-        const { data } = await axios.post(
-          'http://localhost:5000/api/chat/message',
-          { conversationId, userMessage },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-  
-        setConversationId(data._id);
-        setMessages(data.conversation);
-        setUserMessage('');
-  
-        // Mock assistant reply
-        const mockAssistantReply = "I'll get back to you soon! [Mock AI Response]";
-        const resp = await axios.post(
-          'http://localhost:5000/api/chat/assistant',
-          {
-            conversationId: data._id,
-            assistantMessage: mockAssistantReply,
-          },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        setMessages(resp.data.conversation);
-      } catch (err) {
-        console.error(err.response?.data?.msg || err.message);
-        alert(err.response?.data?.msg || 'Failed to send message');
-      }
+    
+    // Load previous conversation if available
+    useEffect(() => {
+        const loadConversation = async () => {
+            try {
+                const response = await fetch('/api/chat/history');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.length > 0) {
+                        // Load most recent conversation
+                        const recentConversation = data[0];
+                        setConversationId(recentConversation._id);
+                        setMessages([
+                            { role: 'ai', text: "Hello! I'm Legal-God AI. How can I assist you with your legal questions today?" },
+                            ...recentConversation.conversation
+                        ]);
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading conversation:', error);
+            }
+        };
+
+        loadConversation();
+    }, []);
+
+    // Scroll to bottom when messages update
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages]);
+
+    // Handle back navigation
+    const handleBack = () => {
+        navigate('/dashboard');
     };
-  
-    const handleLogout = () => {
-      localStorage.removeItem('token');
-      window.location.href = '/';
-    };
-  
+
     return (
-      <div style={styles.container}>
-        <div style={styles.header}>
-          <h1 style={styles.title}>Chat with Legal-God AI</h1>
-          <button onClick={handleLogout} style={styles.logoutButton}>
-            Logout
-          </button>
-        </div>
-        <div style={styles.chatBox}>
-          {messages.map((m, idx) => (
-            <div
-              key={idx}
-              style={m.role === 'user' ? styles.userMessage : styles.assistantMessage}
-            >
-              <strong>{m.role === 'user' ? 'You' : 'Assistant'}:</strong> {m.text}
+        <div className="chat-container">
+            <header className="chat-header">
+                <h1>Chat with Legal-God AI</h1>
+            </header>
+            <div className="messages-container">
+                {messages.map((msg, idx) => (
+                    <div key={idx} className={`message ${msg.role}`}>
+                        <div className="message-content">
+                            <p>{msg.text}</p>
+                        </div>
+                        <div className="avatar">
+                            {msg.role === 'user' ? <User size={20} /> : <Bot size={20} />}
+                        </div>
+                    </div>
+                ))}
+                {isLoading && (
+                    <div className="message ai">
+                        <div className="message-content">
+                            <div className="typing-indicator">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                <div ref={messagesEndRef}></div>
             </div>
-          ))}
+            <form onSubmit={sendMessage} className="chat-form">
+                <input
+                    type="text"
+                    value={userMessage}
+                    onChange={(e) => setUserMessage(e.target.value)}
+                    placeholder="Type your legal question..."
+                    className="chat-input"
+                    disabled={isLoading}
+                />
+                <button type="submit" disabled={isLoading} className="send-button">
+                    <Send size={24} />
+                </button>
+                <button 
+                    type="button"
+                    onClick={handleBack}
+                    className="back-button"
+                >
+                    Go back
+                </button>
+            </form>
         </div>
-        <div style={styles.inputContainer}>
-          <input
-            type="text"
-            value={userMessage}
-            onChange={(e) => setUserMessage(e.target.value)}
-            placeholder="Type your message..."
-            style={styles.input}
-            onKeyPress={(e) => {
-              if (e.key === 'Enter') sendMessage();
-            }}
-          />
-          <button onClick={sendMessage} style={styles.sendButton}>
-            Send
-          </button>
-        </div>
-      </div>
     );
-  }
-  
-  
-const styles = {
-    container: {
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      height: '100vh',
-      width: '100vw',
-      padding: '20px',
-      backgroundColor: '#1e1e2f',
-      color: '#fff',
-      overflow: 'hidden',
-    },
-    header: {
-      width: '100%',
-      maxWidth: '800px',
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: '20px',
-    },
-    title: {
-      fontSize: '24px',
-      fontWeight: 'bold',
-      color: '#fff',
-    },
-    logoutButton: {
-      padding: '10px 15px',
-      backgroundColor: '#61dafb',
-      border: 'none',
-      borderRadius: '4px',
-      fontSize: '14px',
-      cursor: 'pointer',
-      color: '#000',
-      transition: 'background-color 0.3s',
-    },
-    chatBox: {
-      width: '100%',
-      maxWidth: '800px',
-      borderRadius: '8px',
-      backgroundColor: '#282c34',
-      padding: '20px',
-      height: '400px',
-      overflowY: 'auto',
-      boxShadow: '0 4px 15px rgba(0, 0, 0, 0.3)',
-      marginBottom: '20px',
-    },
-    userMessage: {
-      textAlign: 'right',
-      margin: '10px 0',
-      padding: '10px',
-      borderRadius: '8px',
-      backgroundColor: '#61dafb',
-      color: '#000',
-      maxWidth: '70%',
-      alignSelf: 'flex-end',
-    },
-    assistantMessage: {
-      textAlign: 'left',
-      margin: '10px 0',
-      padding: '10px',
-      borderRadius: '8px',
-      backgroundColor: '#3c4048',
-      color: '#fff',
-      maxWidth: '70%',
-      alignSelf: 'flex-start',
-    },
-    inputContainer: {
-      width: '100%',
-      maxWidth: '800px',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '10px',
-      padding: '10px',
-      backgroundColor: '#282c34',
-      borderRadius: '8px',
-      boxShadow: '0 4px 15px rgba(0, 0, 0, 0.3)',
-    },
-    input: {
-      flex: 1,
-      padding: '12px',
-      borderRadius: '4px',
-      border: '1px solid #ccc',
-      fontSize: '16px',
-      backgroundColor: '#3c4048',
-      color: '#fff',
-      outline: 'none',
-    },
-    sendButton: {
-      padding: '12px 20px',
-      fontSize: '16px',
-      fontWeight: 'bold',
-      borderRadius: '4px',
-      backgroundColor: '#61dafb',
-      border: 'none',
-      cursor: 'pointer',
-      color: '#000',
-      transition: 'background-color 0.3s',
-    },
-  };
-  
-  export default ChatPage;
-  
+};
+
+export default ChatPage;
