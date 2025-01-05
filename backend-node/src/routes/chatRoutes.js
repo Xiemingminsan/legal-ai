@@ -2,6 +2,7 @@
 const express = require('express');
 const authMiddleware = require('../middlewares/authMiddleware');
 const ChatHistory = require('../models/ChatHistory');
+const axios = require('axios');
 
 const router = express.Router();
 
@@ -86,5 +87,29 @@ router.get('/conversations', authMiddleware, async (req, res) => {
     res.status(500).json({ msg: 'Server error' });
   }
 });
+
+router.post('/ask-ai', authMiddleware, async (req, res) => {
+  try {
+    const { query } = req.body;
+    const aiServiceUrl = process.env.AI_SERVICE_URL;
+
+    const response = await axios.post(`${aiServiceUrl}/qa`, {
+      query: query,
+      top_k: 3
+    });
+
+    // response.data will have { answer, chunksUsed }
+    const aiAnswer = response.data.answer;
+
+    // If you want, store it in ChatHistory:
+    // e.g., conversationId, userMessage => user, AI => assistant
+    // For now just return the AI answer
+    return res.json({ answer: aiAnswer });
+  } catch (err) {
+    console.error(err.message);
+    return res.status(500).json({ msg: 'Error calling AI service' });
+  }
+});
+
 
 module.exports = router;
