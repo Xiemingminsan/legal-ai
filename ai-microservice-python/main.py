@@ -8,14 +8,17 @@ import pdfplumber
 from dotenv import load_dotenv
 from fastapi import FastAPI, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, JSONResponse as jsonify
 from sentence_transformers import SentenceTransformer
+from gemini_helper import call_gemini_api
+from summary import summarize_with_gemini
 from typing import Any, List, Dict
 from pathlib import Path
 import logging
-import requests  # To call Mistral's API
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
+
+
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -50,9 +53,9 @@ load_dotenv(dotenv_path="../backend-node/.env")
 
 # AI configuration
 USE_LOCAL_LLM = os.getenv("USE_LOCAL_LLM", "false").lower() == "true"
-MISTRAL_API_URL = os.getenv("MISTRAL_API_URL")  # e.g., "https://api.mistral.ai/v1/chat/completions"
-MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")  # if needed
-print("MISTRAL_API_URL",MISTRAL_API_URL)
+
+GEMINI_API_URL = os.getenv("GEMINI_API_URL")  # e.g., "https://api.mistral.ai/v1/chat/completions"
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")  # if needed
 if USE_LOCAL_LLM:
     logger.info("Using local LLM")
     # Load local Mistral LLM
@@ -299,9 +302,9 @@ async def search_similar_chunks(query: str = Form(...), top_k: int = Form(3)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/qa")
-async def rag_qa(query: str = Form(...), top_k: int = Form(3)):
+async def rag_qa(query: str = Form(...),context: str = Form(...), top_k: int = Form(3)):
     try:
-        # Previous code remains the same until the API response handling...
+        # Step 1: Retrieve similar chunks
         retrieval_res = await search_similar_chunks(query, top_k)
         chunks = retrieval_res.get("results", [])
 
@@ -311,95 +314,46 @@ async def rag_qa(query: str = Form(...), top_k: int = Form(3)):
                 "chunksUsed": []
             }
 
-        # 2) Build context string
-        context_texts = []
+        # Step 2: Build context string
+        context_texts = [context]
         for c in chunks:
             context_texts.append(f"Chunk from doc {c['doc_id']}:\n{c['text']}\n")
-
         context_str = "\n\n".join(context_texts)
 
-        # 3) Generate the prompt
-        prompt = (
-            f"You are a helpful assistant. Here is the relevant context:\n\n"
-            f"{context_str}\n\n"
-            f"User question: {query}\n\n"
-            f"INSTRUCTIONS:\n"
-            f"1. If the question is a general greeting or about your capabilities, respond naturally and conversationally. Never reference the context.\n"
-            f"2. For all other questions:\n"
-            f"   - ONLY use the information explicitly stated in the provided context.\n"
-            f"   - If the context does not provide sufficient information to answer the question, respond with: \"Based on the provided context, I cannot answer this question.\"\n"
-            f"   - Do not include any external knowledge or assumptions.\n"
-            f"   - Keep answers concise and factual.\n"
-            f"   - If you quote from the context, use exact quotes.\n\n"
-            f"Answer:"
-        )
-
-        # 4) Call Mistral API
-        if not MISTRAL_API_URL:
-            raise HTTPException(status_code=500, detail="Mistral API URL not configured.")
-
-        headers = {
-            "Authorization": f"Bearer {MISTRAL_API_KEY}" if MISTRAL_API_KEY else "",
-            "Content-Type": "application/json"
-        }
-
+        # Step 3: Create the payload for the Gemini API
         payload = {
-            "model": "mistral-7b-instruct-v0.3",
-            "inputs": prompt,
-            "max_tokens": 300,
-            "temperature": 0.2,
-            "stop": None
+            "contents": [{
+                "parts": [
+                    {
+                        "text": (
+                            f"You are a helpful assistant in the realm of Ethiopian Legal Law and System. Here is the relevant context:\n\n"
+                            f"here is the last 5 message plus the summary of our conversation: {context_str}\n\n"
+                            f"User question: {query}\n\n"
+                            f"INSTRUCTIONS:\n"
+                            f"1. If the question is a general greeting or about your capabilities, respond naturally and conversationally. Never reference the context.\n"
+                            f"2. For all other questions:\n"
+                            f"   - ONLY use the information explicitly stated in the provided context.\n"
+                            f"   - If the context does not provide sufficient information to answer the question, respond with: \"Based on the provided context, I cannot answer this question.\"\n"
+                            f"   - Do not include any external knowledge or assumptions.\n"
+                            f"   - Keep answers concise and factual.\n"
+                            f"   - If you quote from the context, use exact quotes.\n\n"
+                            f"Answer:"
+                        )
+                    }
+                ]
+            }]
         }
 
-        try:
-            response = requests.post(MISTRAL_API_URL, headers=headers, json=payload)
+        result, error = call_gemini_api(payload)
+        if error:
+            logger.error(error)
+            return {"answer": error, "chunksUsed": chunks}
 
-            if response.status_code != 200:
-                logger.error(f"Mistral API error: {response.text}")
-                return {"answer": "Error communicating with AI service.", "chunksUsed": chunks}
-
-            ai_output = response.json()
-
-            # Extract the generated text
-            if isinstance(ai_output, list) and len(ai_output) > 0:
-                full_text = ai_output[0].get('generated_text', '')
-            else:
-                full_text = ai_output.get('choices', [{}])[0].get('text', '')
-
-            # Extract just the answer part
-            answer_text = ""
-            if full_text:
-                # Split by the last occurrence of "Answer:" since it might appear in the context
-                parts = full_text.split("Answer:", 1)
-                if len(parts) > 1:
-                    answer_text = parts[1].strip()
-                else:
-                    # If no "Answer:" found, try to extract the actual answer part
-                    # Look for the response after all the instructions
-                    instruction_markers = [
-                        "INSTRUCTIONS:",
-                        "- If you quote from the context",
-                        "- Keep answers concise and factual"
-                    ]
-                    for marker in instruction_markers:
-                        parts = full_text.split(marker)
-                        if len(parts) > 1:
-                            full_text = parts[-1].strip()
-                    answer_text = full_text
-
-                # Clean up any remaining prompt/instruction text
-                answer_text = answer_text.strip()
-            else:
-                answer_text = "Based on the provided context, I cannot answer this question."
-
-            return {
-                "answer": answer_text,
-                "chunksUsed": chunks
-            }
-
-        except Exception as e:
-            logger.error(f"Online LLM error: {e}")
-            return {"answer": "Error communicating with AI service.", "chunksUsed": chunks}
+        return {
+            "answer": result["answer"],
+            "chunksUsed": chunks,
+            "geminiMetadata": result["geminiMetadata"]
+        }
 
     except Exception as e:
         logger.error(f"QA error: {e}")
@@ -475,7 +429,26 @@ async def clear_faiss_index():
     except Exception as e:
         logger.error(f"Error clearing FAISS index: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/summarize")
+async def summarize(conversationText: str = Form(...)):
+    """
+    Endpoint to summarize a conversation.
+    Expects conversationText as form-encoded input.
+    """
+    try:
+        # Call the summarize function
+        summary = summarize_with_gemini(conversationText)
+        if not summary:
+            raise HTTPException(status_code=500, detail="Failed to summarize the conversation.")
+
+        # Return the summary
+        return {"summary": summary}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
     
+
 @app.on_event("startup")
 async def startup_event():
     global faiss_index, documents_store
@@ -486,7 +459,7 @@ def read_root():
     return {"message": "Welcome to the Legal AI Microservice!"}
 
 if __name__ == "__main__":
-    # # Load FAISS index and documents_store from disk if exists
+    # # Load FAISS index and documents_ store from disk if exists
     # INDEX_PATH = Path('faiss_index/index.faiss')
     # METADATA_PATH = Path('faiss_index/documents_store.json')
 

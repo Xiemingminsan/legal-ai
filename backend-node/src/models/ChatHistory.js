@@ -12,6 +12,7 @@ const ChatHistorySchema = new mongoose.Schema({
     ref: 'User',
   },
   conversation: [ChatMessageSchema], // array of messages
+  summary: { type: String, default: '' }, // add summary field
   createdAt: {
     type: Date,
     default: Date.now,
