@@ -55,3 +55,4 @@ def summarize_with_gemini(conversation_text):
         print(f"Error: {e}")
 
     return ""
+

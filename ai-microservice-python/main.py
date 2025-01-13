@@ -447,7 +447,48 @@ async def summarize(conversationText: str = Form(...)):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# In main.py (Python)
+@app.post("/summarize_doc")
+def summarize_doc(doc_params: Dict[str, Any]):
+    """
+    Summarize or extract key points from a doc's chunks.
+    doc_params: { "docId": str, "mode": "summary" | "keypoints" }
+    """
+    doc_id = doc_params.get("docId")
+    mode =  "summary"
+
+    # 1. Gather all chunks for doc_id
+    relevant_chunks = [d for d in documents_store if d["doc_id"] == doc_id]
+    if not relevant_chunks:
+        return {"error": "No chunks found for this documentId."}
+
+    # 2. Combine text
+    combined_text = "\n".join([rc["text"] for rc in relevant_chunks])
     
+    # 3. Prepare prompt
+    if mode == "summary":
+        prompt = f"Summarize the following text:\n\n{combined_text}\n\nSummary:"
+    else:
+        # e.g. "keypoints" or "analysis"
+        prompt = f"Extract the key points from the following text in bullet form:\n\n{combined_text}\n\nKey Points:"
+
+    # 4. Call Gemini or local LLM
+    payload = {
+        "contents": [
+            {
+                "parts": [{"text": prompt}]
+            }
+        ]
+    }
+    result, error = call_gemini_api(payload)
+    if error:
+        return {"error": error}
+
+    # 5. Return the result
+    summary_text = result["answer"]  # adapt to your gemini structure
+    return {"summary": summary_text}
+
 
 @app.on_event("startup")
 async def startup_event():

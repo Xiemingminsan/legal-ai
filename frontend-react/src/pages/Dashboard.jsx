@@ -9,7 +9,7 @@ function Dashboard() {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [processingStatus, setProcessingStatus] = useState(null);
-  const [processingProgress, setProcessingProgress] = useState(0); // New state
+  const [processingProgress, setProcessingProgress] = useState(0);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -27,8 +27,9 @@ function Dashboard() {
       console.error(err.response?.data?.msg || err.message);
       alert(err.response?.data?.msg || 'Failed to fetch documents');
     }
-    
-  };const handleUpload = async (e) => {
+  };
+
+  const handleUpload = async (e) => {
     e.preventDefault();
     if (!file) {
       alert('Please select a file');
@@ -38,7 +39,7 @@ function Dashboard() {
     setUploading(true);
     setUploadProgress(0);
     setProcessingStatus(null);
-    setProcessingProgress(0); // Initialize processing progress
+    setProcessingProgress(0);
 
     try {
       const token = localStorage.getItem('token');
@@ -46,7 +47,6 @@ function Dashboard() {
       formData.append('title', title);
       formData.append('file', file);
 
-      // Upload with progress tracking
       const response = await axios.post(
         'http://localhost:5000/api/documents/upload',
         formData,
@@ -63,15 +63,12 @@ function Dashboard() {
       );
 
       const docId = response.data.doc._id;
-      console.log('Uploaded Document ID:', docId); // Debugging line
-
       if (docId) {
         pollProcessingStatus(docId);
       }
 
       setTitle('');
       setFile(null);
-      // fetchDocs(); // Move fetchDocs to after processing completes
       alert('File uploaded successfully!');
     } catch (err) {
       console.error(err);
@@ -82,7 +79,6 @@ function Dashboard() {
       setUploading(false);
     }
   };
-
 
   const handleDelete = async (docId) => {
     if (!window.confirm('Are you sure you want to delete this document?')) return;
@@ -107,15 +103,15 @@ function Dashboard() {
     }
 
     let attempts = 0;
-    const maxAttempts = 60; // Maximum attempts (e.g., 5 minutes with 5-second intervals)
-    const interval = 5000; // 5 seconds
+    const maxAttempts = 60;
+    const interval = 5000;
 
     const checkStatus = async () => {
       try {
         const response = await axios.get(
-          `http://localhost:5000/api/documents/${docId}/status`, // Corrected template literal
+          `http://localhost:5000/api/documents/${docId}/status`,
           {
-            headers: { Authorization: `Bearer ${token}` }, // Corrected template literal
+            headers: { Authorization: `Bearer ${token}` },
           }
         );
 
@@ -131,7 +127,7 @@ function Dashboard() {
           alert('Document processed successfully! You can now search.');
         } else if (status === 'failed') {
           setProcessingProgress(100);
-          alert(`Processing failed: ${error}. Please try uploading again.`); // Added backticks
+          alert(`Processing failed: ${error}. Please try uploading again.`);
         } else if (attempts >= maxAttempts && status === 'processing') {
           setProcessingProgress(100);
           alert('Processing is taking longer than expected. Please try again later.');
@@ -146,16 +142,15 @@ function Dashboard() {
 
     checkStatus();
   };
-
   const handleLogout = () => {
     localStorage.removeItem('token');
-    navigate('/'); // Redirect to login or home page
+    navigate('/');
   };
 
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h1 style={styles.title}>Upload Document</h1>
+        <h1>Upload Document</h1>
         <button onClick={handleLogout} style={styles.logoutButton}>
           Logout
         </button>
@@ -186,30 +181,28 @@ function Dashboard() {
             {uploading ? 'Uploading...' : 'Upload Document'}
           </button>
 
-          {/* Upload Progress Bar */}
           {uploading && (
             <div style={styles.progressContainer}>
               <div
                 style={{
                   ...styles.progressBar,
-                  width: `${uploadProgress}%`, // Corrected template literal
+                  width: `${uploadProgress}%`,
                 }}
               />
               <span style={styles.progressText}>{uploadProgress}% uploaded</span>
             </div>
           )}
 
-          {/* Processing Status and Progress */}
           {processingStatus && (
-            <div className={`status ${processingStatus}`} style={styles.statusContainer}>
+            <div style={styles.statusContainer}>
               {processingStatus === 'processing' && (
                 <>
                   <div style={styles.progressContainer}>
                     <div
                       style={{
                         ...styles.progressBar,
-                        width: `${processingProgress}%`, // Corrected template literal
-                        backgroundColor: '#FFA500', // Orange for processing
+                        width: `${processingProgress}%`,
+                        backgroundColor: '#FFA500',
                       }}
                     />
                     <span style={styles.progressText}>{Math.round(processingProgress)}% processed</span>
@@ -218,67 +211,62 @@ function Dashboard() {
                 </>
               )}
               {processingStatus === 'completed' && (
-                <div style={{ ...styles.status, backgroundColor: '#28a745' }}>
+                <div style={{ backgroundColor: '#28a745', padding: '10px', borderRadius: '4px', marginTop: '10px' }}>
                   Document processed successfully! You can now search.
                 </div>
               )}
               {processingStatus === 'failed' && (
-                <div style={{ ...styles.status, backgroundColor: '#dc3545' }}>
+                <div style={{ backgroundColor: '#dc3545', padding: '10px', borderRadius: '4px', marginTop: '10px' }}>
                   Processing failed. Please try uploading again.
                 </div>
               )}
             </div>
           )}
         </form>
+
         <h2>Your Documents</h2>
-          {docs.length === 0 ? (
-            <p style={styles.emptyText}>No documents uploaded yet.</p>
-          ) : (
-            <ul style={styles.list}>
-              {docs.map((doc) => (
-                <li key={doc._id} style={styles.listItem}>
-                  <span>{doc.title}</span>
-                  <div>
-                    <button
-                      onClick={() => navigate(`/documents/${doc._id}`)}
-                      style={styles.actionButton}
-                    >
-                      View
-                    </button>
-                    <button
-                      onClick={() => handleDelete(doc._id)}
-                      style={styles.deleteButton}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-          
+        {docs.length === 0 ? (
+          <p>No documents uploaded yet.</p>
+        ) : (
+          <ul style={styles.list}>
+            {docs.map((doc) => (
+              <li key={doc._id} style={styles.listItem}>
+                <span>{doc.title}</span>
+                <div>
+                  <button
+                    onClick={() => navigate(`/documents/${doc._id}`)}
+                    style={styles.actionButton}
+                  >
+                    View
+                  </button>
+                  <button
+                  onClick={() => navigate('/chat', { state: { docId: doc._id, mode: 'summary' } })}
+                  style={styles.actionButton}
+                >
+                  Summarize Document
+                </button>
 
+                  <button
+                    onClick={() => handleDelete(doc._id)}
+                    style={styles.deleteButton}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
-
-      {/* Navigation to Search and FAISS Pages */}
       <div style={styles.navbar}>
-        <button
-          onClick={() => navigate('/search')}
-          style={styles.navButton}
-        >
+        <button onClick={() => navigate('/search')} style={styles.navButton}>
           Search Documents
         </button>
-        <button
-          onClick={() => navigate('/faiss')}
-          style={styles.navButton}
-        >
+        <button onClick={() => navigate('/faiss')} style={styles.navButton}>
           View FAISS Index
         </button>
-        <button
-          onClick={() => navigate('/chat')}
-          style={styles.navButton}
-        >
+        <button onClick={() => navigate('/chat')} style={styles.navButton}>
           Chat with AI
         </button>
       </div>

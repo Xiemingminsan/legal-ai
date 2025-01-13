@@ -111,4 +111,36 @@ router.get('/history', authMiddleware, async (req, res) => {
     }
 });
 
+router.post('/new', authMiddleware, async (req, res) => {
+    try {
+      const userId = req.user.userId;
+      const conversation = new ChatHistory({
+        userId,
+        conversation: [],
+        summary: ''
+      });
+      await conversation.save();
+      res.json({ conversationId: conversation._id });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ msg: 'Failed to create a new conversation' });
+    }
+  });
+
+router.post('/:conversationId/save-message', authMiddleware, async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const { role, text } = req.body;
+    const conversation = await ChatHistory.findById(conversationId);
+    if (!conversation) return res.status(404).json({ msg: 'Conversation not found' });
+
+    conversation.conversation.push({ role, text });
+    await conversation.save();
+    res.json({ msg: 'Message saved successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ msg: 'Failed to save message' });
+  }
+});
+
 module.exports = router;

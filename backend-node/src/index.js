@@ -8,6 +8,8 @@ const connectDB = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
 const docRoutes = require('./routes/docRoutes');
 const chatRoutes = require('./routes/chatRoutes');
+const docAnalysisRoutes = require('./routes/docAnalysisRoutes');
+
 
 const app = express();
 
@@ -28,6 +30,8 @@ app.use('/uploads', (req, res, next) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/documents', docRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/docAnalysis', docAnalysisRoutes);
+
 
 // Catch-all route for unhandled paths
 app.use((req, res) => {
