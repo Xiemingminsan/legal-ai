@@ -33,8 +33,12 @@ const upload = multer({
 // POST /api/documents/upload
 router.post('/upload', authMiddleware, upload.single('file'), async (req, res) => {
   try {
-    const { title } = req.body;
+    const { title, category, docScope } = req.body;
     const file = req.file;
+    console.log("Title:", title);
+    console.log("Category:", category);
+    console.log("Document Scope:", docScope);
+    
     
     // Validation
     if (!title?.trim()) {
@@ -44,6 +48,12 @@ router.post('/upload', authMiddleware, upload.single('file'), async (req, res) =
     if (!file) {
       return res.status(400).json({ msg: 'No file uploaded' });
     }
+    if(!category){
+      return res.status(400).json({ msg: 'Category is required' });
+    }
+    if(!docScope){
+      return res.status(400).json({ msg: 'Document Scope is required' });
+    }
 
     // Create document record with initial status
     const newDoc = new Document({
@@ -51,7 +61,9 @@ router.post('/upload', authMiddleware, upload.single('file'), async (req, res) =
       filePath: file.path,
       uploaderId: req.user.userId,
       status: 'processing', // Add status field to your schema
-      processingError: null
+      processingError: null,
+      category: category || 'uncategorized',
+      docScope: docScope || 'public'
     });
     
     await newDoc.save();
@@ -79,6 +91,8 @@ router.post('/upload', authMiddleware, upload.single('file'), async (req, res) =
       const form = new FormData();
       form.append('doc_id', newDoc._id.toString());
       form.append('pdf_path', pdfFullPath);
+      form.append('doc_scope', docScope);
+      form.append('category', category);
 
       console.log("Sending request to AI service...");
       console.log("Document ID:", newDoc._id.toString());

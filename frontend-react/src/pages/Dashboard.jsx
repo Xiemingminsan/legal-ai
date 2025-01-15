@@ -6,6 +6,8 @@ function Dashboard() {
   const [docs, setDocs] = useState([]);
   const [title, setTitle] = useState('');
   const [file, setFile] = useState(null);
+  const [category, setCategory] = useState('uncategorized'); // Default category
+  const [docScope, setDocScope] = useState('public'); // Default scope
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [processingStatus, setProcessingStatus] = useState(null);
@@ -46,6 +48,10 @@ function Dashboard() {
       const formData = new FormData();
       formData.append('title', title);
       formData.append('file', file);
+      formData.append('category', category);
+      formData.append('docScope', docScope);
+      console.log('docScope:', docScope);
+      console.log('category:', category);
 
       const response = await axios.post(
         'http://localhost:5000/api/documents/upload',
@@ -173,6 +179,25 @@ function Dashboard() {
             style={styles.inputFile}
             required
           />
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            style={styles.select}
+          >
+            <option value="criminal">Criminal</option>
+            <option value="family">Family</option>
+            <option value="trade">Trade</option>
+            <option value="contract">Contract</option>
+            <option value="uncategorized">Uncategorized</option>
+          </select>
+          <select
+            value={docScope}
+            onChange={(e) => setDocScope(e.target.value)}
+            style={styles.select}
+          >
+            <option value="private">Private</option>
+            <option value="public">Public</option>
+          </select>
           <button
             type="submit"
             style={styles.button}

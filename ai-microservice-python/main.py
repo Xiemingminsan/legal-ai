@@ -249,7 +249,7 @@ def save_faiss_state():
         logger.error(f"Error saving FAISS state: {e}")
 
 @app.post("/embed_document")
-async def embed_document(doc_id: str = Form(...), pdf_path: str = Form(...)):
+async def embed_document(doc_id: str = Form(...), pdf_path: str = Form(...), docScope: str = Form(...),category: str = Form(...)):
     try:
         print(f"Processing document {doc_id}")
 
@@ -297,6 +297,8 @@ async def embed_document(doc_id: str = Form(...), pdf_path: str = Form(...)):
                 "text": chunk,
                 "index": start_idx + len(documents_store),
                 "uploadDate": current_time,
+                "docScope": docScope,
+                "category": category,
                 "status": "completed"
             })
 
@@ -723,7 +725,9 @@ async def list_faiss_documents() -> Dict[str, List[Dict[str, Any]]]:
                 "doc_id": doc_metadata["doc_id"],
                 "title": doc_metadata["title"],
                 "uploadDate": doc_metadata["uploadDate"],
-                "text": doc_metadata["text"]
+                "text": doc_metadata["text"],
+                "docScope": doc_metadata["docScope"],
+                "category": doc_metadata["category"],
             }
             documents.append(document)
             
@@ -821,6 +825,43 @@ def summarize_doc(doc_params: Dict[str, Any]):
     summary_text = result["answer"]  # adapt to your gemini structure
     return {"summary": summary_text}
 
+@app.post("/classify_doc")
+def classify_doc(doc_params: Dict[str, Any]):
+    """
+    Zero-shot classification of doc text
+    doc_params: { "docId": str }
+    """
+    doc_id = doc_params.get("docId")
+    if not doc_id:
+        return {"error": "No docId provided"}
+
+    # 1. Gather chunks for doc_id
+    relevant_chunks = [d for d in documents_store if d["doc_id"] == doc_id]
+    if not relevant_chunks:
+        return {"error": "No chunks found for this docId"}
+
+    combined_text = "\n".join([rc["text"] for rc in relevant_chunks])
+
+    # 2. We can prompt Gemini or local LLM with a classification instruction:
+    categories = ["Family Law", "Contract Law", "Trade Law", "Criminal Law", "Other"]
+    cat_str = ", ".join(categories)
+    prompt = (f"Classify the following text into one of these categories: {cat_str}.\n\n"
+              f"Text:\n{combined_text}\n\n"
+              f"Answer with only one category name from the list.\nCategory:")
+
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}]
+    }
+    result, error = call_gemini_api(payload)
+    if error:
+        return {"error": error}
+
+    classification = result["answer"].strip()
+    # Optionally, ensure it's one of your categories
+    if classification not in categories:
+        classification = "Other"
+
+    return {"classification": classification}
 
 @app.on_event("startup")
 async def startup_event():
