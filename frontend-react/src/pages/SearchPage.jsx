@@ -41,6 +41,7 @@ function SearchPage() {
       );
 
       setResults(response.data.results);
+      console.log(response.data.results)
       if (response.data.results.length === 0) {
         alert('No similar document chunks found.');
       }
@@ -113,25 +114,21 @@ function SearchPage() {
         <div style={styles.resultsContainer}>
           <h2>Search Results</h2>
           <ul style={styles.resultsList}>
-            {results.map((result, index) => (
-              <li key={index} style={styles.resultItem}>
-                <h3>Document ID: {result.doc_id}</h3>
-                <p><strong>Title:</strong> {result.title}</p>
-                <p><strong>Uploaded At:</strong> {new Date(result.uploadDate).toLocaleString()}</p>
-                <p>{highlightText(result.text, query)}</p>
-                <p>Similarity Score: {result.similarity.toFixed(4)}</p>
-                <button
-                  onClick={() => navigate(`/documents/${result.doc_id}`)}
-                  style={styles.viewButton}
-                >
-                  View Document
-                </button>
-                
-                {/* Add Feedback Buttons if desired */}
-                {/* <button onClick={() => handleFeedback(result.doc_id, 'relevant')} style={styles.feedbackButton}>Relevant</button>
-                <button onClick={() => handleFeedback(result.doc_id, 'irrelevant')} style={styles.feedbackButton}>Irrelevant</button> */}
-              </li>
-            ))}
+          {results.map((result, index) => (
+  <li key={index} style={styles.resultItem}>
+    <h3>Document ID: {result.doc_id}</h3>
+    <p><strong>Title:</strong> {result.title}</p>
+    <p><strong>Uploaded At:</strong> {new Date(result.uploadDate).toLocaleString()}</p>
+    <p>{highlightText(result.text, query)}</p>
+    <p>Similarity Score: {result.similarity.toFixed(4)}</p>
+    <button
+      onClick={() => navigate(`/documents/${result.doc_id}`)}
+      style={styles.viewButton}
+    >
+      View Document
+    </button>
+  </li>
+))}
           </ul>
         </div>
       )}

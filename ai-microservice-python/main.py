@@ -1,6 +1,7 @@
 import datetime
 import json
 import os
+import concurrent.futures
 import uvicorn
 import faiss
 import numpy as np
@@ -45,10 +46,6 @@ embedding_model = SentenceTransformer(EMBEDDING_MODEL_NAME)
 dimension = 384
 faiss_index = faiss.IndexFlatIP(dimension)
 documents_store = []
-
-# Constants
-CHUNK_SIZE = 200
-BATCH_SIZE = 10  # Number of chunks to embed at once
 load_dotenv(dotenv_path="../backend-node/.env")
 
 # AI configuration
@@ -70,45 +67,138 @@ if USE_LOCAL_LLM:
 else:
     logger.info("Using online LLM via Mistral API")
 
+import re
+import logging
+from typing import List
+import pdfplumber
+import numpy as np
+import faiss
+import spacy
+from fastapi import HTTPException
+from sentence_transformers import SentenceTransformer
+from nltk.tokenize import sent_tokenize
+
+# Initialize global resources
+logger = logging.getLogger(__name__)
+nlp = spacy.load('en_core_web_sm')
+embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+nlp.max_length = 2_000_000
+
+# Configuration constants
+CHUNK_SIZE = 300        # Max tokens per chunk (adjustable)
+OVERLAP_SENTENCES = 2   # Number of previous sentences for context enrichment
+BATCH_SIZE = 32         # Batch size for embedding
+
 class DocumentProcessor:
     @staticmethod
     def extract_text_from_pdf(pdf_path: str) -> str:
         try:
-            text = ""
             with pdfplumber.open(pdf_path) as pdf:
-                for page in pdf.pages:
-                    if page_text := page.extract_text():
-                        text += page_text + "\n"
-            return text
+            # Process pages in parallel
+                def process_page(page):
+                    page_text = page.extract_text()
+                    if page_text:
+                    # Remove trailing numbers or noise
+                        return re.sub(r"\s*\d+\s*$", "", page_text)
+                    return ""
+
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    texts = executor.map(process_page, pdf.pages)
+
+            # Combine all page texts
+            text = "\n".join(text.strip() for text in texts if text.strip())
+
+            if not text.strip():
+                raise ValueError("No extractable text found in the PDF.")
+
+            logger.info(f"Extracted {len(text.split())} words from PDF.")
+            return text.strip()
+
+        except FileNotFoundError:
+            logger.error(f"PDF file not found: {pdf_path}")
+            raise HTTPException(status_code=404, detail="PDF file not found.")
         except Exception as e:
             logger.error(f"Error extracting text from PDF: {e}")
             raise HTTPException(status_code=400, detail="Failed to extract text from PDF")
 
-    @staticmethod
-    def chunk_text(text: str) -> List[str]:
-        """Smart text chunking with overlap"""
-        words = text.split()
-        chunks = []
-        overlap = 50  # Words of overlap between chunks
 
-        for i in range(0, len(words), CHUNK_SIZE - overlap):
-            chunk = words[i:i + CHUNK_SIZE]
-            if chunk:
-                chunks.append(" ".join(chunk))
+    @staticmethod
+    def chunk_text(text: str, max_chunk_size: int = CHUNK_SIZE) -> List[str]:
+        """
+        Semantic-aware text chunking using spaCy to maintain sentence boundaries.
+        Adjusts chunk size dynamically and preserves context with overlap.
+        """
+        doc = nlp(text)
+        sentences = [sent.text.strip() for sent in doc.sents]
+        chunks = []
+        current_chunk = []
+        current_length = 0
+
+        for sentence in sentences:
+            sentence_len = len(sentence.split())
+            # If adding sentence stays within chunk limit, add it
+            if current_length + sentence_len <= max_chunk_size:
+                current_chunk.append(sentence)
+                current_length += sentence_len
+            else:
+                # Finalize current chunk
+                chunks.append(" ".join(current_chunk))
+                # Start new chunk with overlap from previous sentences
+                overlap = current_chunk[-OVERLAP_SENTENCES:] if len(current_chunk) >= OVERLAP_SENTENCES else current_chunk
+                current_chunk = overlap + [sentence]
+                current_length = sum(len(s.split()) for s in current_chunk)
+
+        # Append any remaining sentences as last chunk
+        if current_chunk:
+            chunks.append(" ".join(current_chunk))
+
+        logger.info(f"Generated {len(chunks)} semantic chunks.")
         return chunks
 
     @staticmethod
-    def batch_embed(chunks: List[str]) -> np.ndarray:
-        """Embed chunks in batches to manage memory"""
+    def context_enriched_chunking(chunks: List[str], window_size: int = OVERLAP_SENTENCES) -> List[str]:
+        """
+        Enrich each chunk by appending context from previous chunks.
+        """
+        enriched_chunks = []
+        for i in range(len(chunks)):
+            # Concatenate previous `window_size` chunks as context
+            context = " ".join(chunks[max(0, i - window_size):i])
+            enriched_chunk = f"{context}\n{chunks[i]}" if context else chunks[i]
+            enriched_chunks.append(enriched_chunk)
+        logger.info(f"Enriched {len(enriched_chunks)} chunks with context.")
+        return enriched_chunks
+
+    @staticmethod
+    def batch_embed(chunks: List[str], batch_size: int = BATCH_SIZE, min_chunk_size: int = 5) -> np.ndarray:
+        """
+        Embed chunks in batches, filtering out very small ones, and normalizing vectors.
+        """
         all_embeddings = []
 
-        for i in range(0, len(chunks), BATCH_SIZE):
-            batch = chunks[i:i + BATCH_SIZE]
+        for i in range(0, len(chunks), batch_size):
+            # Filter out chunks that are too small to embed meaningfully
+            batch = [chunk for chunk in chunks[i:i + batch_size] if len(chunk.split()) >= min_chunk_size]
+            if not batch:
+                continue
             embeddings = embedding_model.encode(batch, convert_to_numpy=True)
             faiss.normalize_L2(embeddings)
             all_embeddings.append(embeddings)
-            
-        return np.vstack(all_embeddings)
+
+        if all_embeddings:
+            final_embeddings = np.vstack(all_embeddings)
+            faiss.normalize_L2(final_embeddings)  # Normalize final array
+            logger.info(f"Embedded {len(final_embeddings)} chunks.")
+            return final_embeddings
+        else:
+            logger.warning("No valid chunks to embed.")
+            return np.array([])
+
+# Example usage:
+# text = DocumentProcessor.extract_text_from_pdf("sample.pdf")
+# chunks = DocumentProcessor.chunk_text(text)
+# enriched_chunks = DocumentProcessor.context_enriched_chunking(chunks)
+# embeddings = DocumentProcessor.batch_embed(enriched_chunks)
 
 # Modified initialization code
 def initialize_faiss():
@@ -162,8 +252,8 @@ def save_faiss_state():
 async def embed_document(doc_id: str = Form(...), pdf_path: str = Form(...)):
     try:
         print(f"Processing document {doc_id}")
-        print(f"PDF path: {pdf_path}")
-        logger.info(f"Processing document {doc_id}")
+
+        logger.info(f"Processing document {doc_id}")    
         
         # Validate PDF path
         if not os.path.exists(pdf_path):
@@ -178,9 +268,17 @@ async def embed_document(doc_id: str = Form(...), pdf_path: str = Form(...)):
         chunks = DocumentProcessor.chunk_text(raw_text)
         if not chunks:
             raise HTTPException(status_code=400, detail="No chunks generated")
+        
+        print(f"Extracted {len(chunks)} chunks from document {doc_id}")
+        
+        # Enrich chunks with context
+        enriched_chunks = DocumentProcessor.context_enriched_chunking(chunks)
+
+        print(f"Enriched {len(enriched_chunks)} chunks with context")
+        print(enriched_chunks)
             
         # Generate embeddings
-        embeddings = DocumentProcessor.batch_embed(chunks)
+        embeddings = DocumentProcessor.batch_embed(enriched_chunks)
         
         # Update FAISS index
         faiss_index.add(embeddings)
@@ -234,68 +332,274 @@ async def get_document_status(doc_id: str):
     except Exception as e:
         logger.error(f"Error getting document status: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+    
+
+import re
+import string
+from typing import List, Set
+import nltk
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+from nltk.stem import WordNetLemmatizer
+
+# Download required NLTK data
+nltk.download('punkt')
+nltk.download('stopwords')
+nltk.download('wordnet')
+nltk.download('punkt_tab')
+
+class QueryPreprocessor:
+    def __init__(self):
+        self.lemmatizer = WordNetLemmatizer()
+        self.stop_words = set(stopwords.words('english'))
+        
+        self.remove_words = {
+            # Common question words
+            'what', 'how', 'why', 'when', 'where', 'who', 'which',
+
+            # Auxiliary verbs and modal verbs
+            'is', 'are', 'was', 'were', 'am', 'be', 'been', 'do', 'does', 'did', 
+            'can', 'could', 'shall', 'should', 'will', 'would', 'might', 'must',
+            'has', 'have', 'had', 'having',
+
+            # Articles, conjunctions, and prepositions
+            'the', 'a', 'an', 'and', 'or', 'but', 
+            'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 
+            'from', 'up', 'down', 'into', 'onto', 'out', 'about', 'as',
+            'across', 'along', 'through', 'over', 'under', 'around', 'between',
+
+            # Politeness and casual fillers
+            'please', 'kindly', 'okay', 'ok', 'thanks', 'thank', 'welcome', 
+            'hi', 'hello', 'hey', 'yo', 'dear', 'regards', 'bye', 'alright', 'fine',
+            
+            # Temporal fillers
+            'now', 'then', 'later', 'today', 'tomorrow', 'yesterday', 
+            'soon', 'earlier', 'before', 'after', 'already', 'yet', 'just',
+            'sometimes', 'never', 'always', 'whenever', 'often', 'rarely',
+
+            # Request-related terms
+            'show', 'tell', 'explain', 'list', 'find', 'search', 'get', 'give', 
+            'help', 'fix', 'need', 'require', 'want', 'looking', 'see', 'check', 
+            'look', 'display', 'provide', 'say', 'ask', 'let', 'make', 'know',
+            'suggest', 'recommend', 'advise', 'clarify', 'solve', 'resolve',
+
+            # Pronouns
+            'i', 'me', 'my', 'we', 'our', 'us', 'you', 'your', 'yours', 
+            'they', 'them', 'their', 'he', 'she', 'it', 'his', 'hers', 'its', 
+            'this', 'that', 'these', 'those', 'mine', 'theirs','there', 'myself', 'yourself',
+            'himself', 'herself', 'itself', 'ourselves', 'yourselves', 'themselves',
+
+            # Quantifiers and comparisons
+            'more', 'less', 'many', 'few', 'several', 'some', 'any', 'all', 
+            'none', 'most', 'every', 'each', 'lot', 'lots', 'plenty', 'much', 
+            'quite', 'very', 'really', 'rather', 'too', 'enough', 'almost', 
+            'entirely', 'partially', 'bit', 'tiny', 'huge', 'large', 'small',
+
+            # Internet or technical terms
+            'www', 'com', 'http', 'https', 'site', 'website', 'page', 'link', 
+            'click', 'browse', 'read', 'open', 'close', 'file', 'folder', 
+            'document', 'text', 'content', 'section', 'chapter', 'paragraph',
+
+            # Domain-specific casual terms
+            'article', 'clause', 'rule', 'regulation', 'policy', 'condition', 
+            'status', 'case', 'instance', 'example', 'illustration', 'note',
+
+            # Repetitive or verbose terms
+            'okay', 'ok', 'fine', 'alright', 'cool', 'sure', 'yes', 'no', 'uh', 
+            'um', 'uhh', 'umm', 'hm', 'hmm', 'oops', 'oopsie', 'oh', 'ah', 'haha', 
+
+            # Synonyms for redundant phrases
+            'maybe', 'perhaps', 'sort', 'kind', 'type', 'sorta', 'kinda', 
+            'bit', 'quite', 'basically', 'actually', 'literally', 'like', 'just', 
+            'so', 'well', 'anyway', 'thing', 'things', 'such', 'etc', 'stuff',
+
+            # Contextual fillers
+            'during', 'including', 'until', 'against', 'among', 'throughout', 
+            'despite', 'towards', 'upon', 'concerning', 'beyond', 'within',
+            'alongside', 'ahead', 'apart', 'aside', 'inside', 'outside',
+            'because', 'therefore', 'though', 'although', 'however', 'meanwhile',
+            
+            # Placeholder words
+            'something', 'anything', 'everything', 'nothing', 'whatever', 'whenever', 
+            'whoever', 'wherever', 'whichever', 'anybody', 'nobody', 'everybody',
+            
+            # Expressions
+            'let me', 'let us', 'would you', 'could you', 'should you', 
+            'can you', 'shall we', 'might we', 'is it', 'is there', 'are there',
+
+            # Additional random fillers
+            'fine', 'yep', 'nope', 'surely', 'nah', 'yeah', 'indeed', 'okey',
+            'yup', 'yo', 'welp', 'whoa', 'huh', 'gosh', 'golly', 'geez', 
+            'oh no', 'oops', 'wow', 'haha', 'lol', 'rofl', 'lmao', 'hehe',
+
+            #Others
+            'type', 'types', 'kind', 'kinds', 'category', 'categories', 'form', 'forms',
+            'manner', 'manners', 'way', 'ways', 'method', 'methods', 'sort', 'sorts',
+        }
+        
+        self.query_expansions = {
+            "article": ["section", "provision", "clause", "regulation"],
+            "paragraph": ["para", "section", "subsection"],
+            "regulation": ["rule", "directive", "guideline", "provision"],
+            "amendment": ["modification", "change", "revision", "update"],
+            "requirement": ["requirement", "obligation", "condition", "prerequisite"],
+            "api": ["endpoint", "interface", "service"],
+            "error": ["exception", "failure", "fault", "bug"],
+            "config": ["configuration", "setting", "parameter"],
+            "database": ["db", "data", "storage"],
+            "function": ["method", "procedure", "routine"],
+            "example": ["instance", "case", "illustration"],
+            "difference": ["distinction", "comparison", "contrast"],
+            "meaning": ["definition", "interpretation", "explanation"],
+            "use": ["usage", "application", "implementation"],
+            "problem": ["issue", "error", "difficulty", "bug"]
+        }
+
+    def preprocess_query(self, query: str) -> str:
+        """
+        Preprocesses the query while preserving important patterns.
+        """
+        # Convert to lowercase
+        query = query.lower().strip()
+        
+        # Fix stuck-together article/section patterns, preserving decimals
+        query = re.sub(r'(article|section)(\d+(\.\d+)*)', r'\1 \2', query, flags=re.IGNORECASE)
+        
+        preserved_patterns = {}
+        pattern_counter = 0
+        
+        patterns_to_preserve = [
+            (r'article\s+\d+(\.\d+)*', 'ARTICLE'),
+            (r'section\s+\d+(\.\d+)*', 'SECTION'),
+            (r'version\s+\d+(\.\d+)*', 'VERSION'),
+            (r'v\d+(\.\d+)*', 'VERSION'),
+            (r'error\s+\d+', 'ERROR'),
+            (r'\d+\.\d+\.\d+', 'VERSION')
+        ]
+        
+        # Save and replace patterns to preserve
+        for pattern, token_prefix in patterns_to_preserve:
+            for match in re.finditer(pattern, query):
+                token = f"{token_prefix}_{pattern_counter}"
+                preserved_patterns[token] = match.group()
+                query = query.replace(match.group(), token)
+                pattern_counter += 1
+        
+        # Tokenize
+        tokens = word_tokenize(query)
+        
+        processed_tokens = []
+        for token in tokens:
+            # Skip punctuation tokens
+            if all(char in string.punctuation for char in token):
+                continue
+            
+            # Restore preserved patterns immediately
+            if token in preserved_patterns:
+                processed_tokens.append(preserved_patterns[token])
+                continue
+                
+            # Skip tokens in the removal list
+            if token.lower() in self.remove_words:
+                continue
+                
+            # Lemmatize token
+            lemmatized = self.lemmatizer.lemmatize(token, pos='v')
+            lemmatized = self.lemmatizer.lemmatize(lemmatized, pos='n')
+            
+            processed_tokens.append(lemmatized)
+        
+        result = ' '.join(processed_tokens)
+        
+        # Restore preserved patterns in the final result
+        for token, original in preserved_patterns.items():
+            result = result.replace(token, original)
+        
+        # Handle conjoined article references: "article X and Y" -> "article X article Y"
+        result = re.sub(r'(article\s+\d+(\.\d+)*)\s+and\s+(\d+(\.\d+)*)', 
+                        lambda m: f"{m.group(1)} article {m.group(3)}", result)
+        
+        # Handle conjoined section references: "section X and Y" -> "section X section Y"
+        result = re.sub(r'(section\s+\d+(\.\d+)*)\s+and\s+(\d+(\.\d+)*)', 
+                        lambda m: f"{m.group(1)} section {m.group(3)}", result)
+        
+        # Final cleanup: remove extra spaces
+        result = re.sub(r'\s+', ' ', result).strip()
+        
+        return result
         
 @app.post("/search")
 async def search_similar_chunks(query: str = Form(...), top_k: int = Form(3)):
     try:
         if not documents_store:
-            print("documents_store", documents_store)
             return {"results": []}
         
-        # Ensure FAISS index is loaded
         try:
             faiss_index = faiss.read_index("faiss_index_file.index")
         except Exception as e:
             logger.error(f"FAISS index loading error: {e}")
             return {"results": []}
-
-        # 1. Semantic Search
-        query_embedding = embedding_model.encode([query], convert_to_numpy=True)
-        faiss.normalize_L2(query_embedding)
-        distances, indices = faiss_index.search(query_embedding, len(documents_store))  # Get all results initially
         
-        # 2. Keyword matching
-        query_terms = set(query.lower().split())
+        query_processor = QueryPreprocessor()
+        processed_query = query_processor.preprocess_query(query)
+        print(f"Processed query: {processed_query}")
         
-        # 3. Combine results with hybrid scoring
-        hybrid_results = []
-        for idx, semantic_score in zip(indices[0], distances[0]):
-            if idx != -1:  # Valid index
-                doc = documents_store[idx]
-                text = doc["text"].lower()
-                
-                # Calculate exact match score
-                exact_match_score = 0
-                for term in query_terms:
-                    if term in text:
-                        exact_match_score += 1
-                
-                # Normalize exact match score
-                exact_match_score = exact_match_score / len(query_terms)
-                
-                # Calculate final score (weighted combination)
-                # Adjust these weights to balance semantic vs exact matching
-                semantic_weight = 0.6
-                exact_weight = 0.4
-                final_score = (semantic_weight * float(semantic_score)) + (exact_weight * exact_match_score)
-                
-                # Boost score significantly if the exact query appears in the text
-                if query.lower() in text:
-                    final_score *= 1.5
-                
-                hybrid_results.append({
-                    "doc_id": doc["doc_id"],
-                    "text": doc["text"],
-                    "similarity": final_score,
-                    "semantic_score": float(semantic_score),
-                    "exact_match_score": exact_match_score
-                })
+        # First, look for exact phrase matches
+        exact_matches = []
+        query_lower = processed_query.lower().strip()
         
-        # Sort by final score and take top_k results
-        hybrid_results.sort(key=lambda x: x["similarity"], reverse=True)
-        top_results = hybrid_results[:top_k]
+        for idx, doc in enumerate(documents_store):
+            text_lower = doc["text"].lower()
+            
+            # Check for exact phrase match
+            if query_lower in text_lower:
+                # Find word boundaries to ensure it's a complete phrase match
+                for match in re.finditer(r'\b' + re.escape(query_lower) + r'\b', text_lower):
+                    exact_matches.append({
+                        "doc_id": doc["doc_id"],
+                        "text": doc["text"],
+                        "similarity": 1.0,
+                        "semantic_score": 1.0,
+                        "exact_match_score": 1.0,
+                        "match_type": "exact"
+                    })
         
-        return {"results": top_results}
+        # If we have enough exact matches, return them
+        if len(exact_matches) >= top_k:
+            return {"results": exact_matches[:top_k]}
+        
+        # If we need more results, perform semantic search
+        remaining_slots = top_k - len(exact_matches)
+        if remaining_slots > 0:
+            query_embedding = embedding_model.encode([processed_query], convert_to_numpy=True)
+            faiss.normalize_L2(query_embedding)
+            distances, indices = faiss_index.search(query_embedding, len(documents_store))
+            
+            semantic_results = []
+            seen_doc_ids = {match["doc_id"] for match in exact_matches}
+            
+            for idx, semantic_score in zip(indices[0], distances[0]):
+                if idx != -1:
+                    doc = documents_store[idx]
+                    
+                    # Skip if we already have this document in exact matches
+                    if doc["doc_id"] in seen_doc_ids:
+                        continue
+                    
+                    semantic_results.append({
+                        "doc_id": doc["doc_id"],
+                        "text": doc["text"],
+                        "similarity": float(semantic_score),
+                        "semantic_score": float(semantic_score),
+                        "exact_match_score": 0.0,
+                        "match_type": "semantic"
+                    })
+            
+            # Combine exact matches with top semantic results
+            combined_results = exact_matches + semantic_results[:remaining_slots]
+            return {"results": combined_results}
+        
+        return {"results": exact_matches}
         
     except Exception as e:
         logger.error(f"Search error: {e}")
@@ -320,30 +624,58 @@ async def rag_qa(query: str = Form(...),context: str = Form(...), top_k: int = F
             context_texts.append(f"Chunk from doc {c['doc_id']}:\n{c['text']}\n")
         context_str = "\n\n".join(context_texts)
 
-        # Step 3: Create the payload for the Gemini API
         payload = {
-            "contents": [{
-                "parts": [
-                    {
-                        "text": (
-                            f"You are a helpful assistant in the realm of Ethiopian Legal Law and System. Here is the relevant context:\n\n"
-                            f"here is the last 5 message plus the summary of our conversation: {context_str}\n\n"
-                            f"User question: {query}\n\n"
-                            f"INSTRUCTIONS:\n"
-                            f"1. If the question is a general greeting or about your capabilities, respond naturally and conversationally. Never reference the context.\n"
-                            f"2. For all other questions:\n"
-                            f"   - ONLY use the information explicitly stated in the provided context.\n"
-                            f"   - If the context does not provide sufficient information to answer the question, respond with: \"Based on the provided context, I cannot answer this question.\"\n"
-                            f"   - Do not include any external knowledge or assumptions.\n"
-                            f"   - Keep answers concise and factual.\n"
-                            f"   - If you quote from the context, use exact quotes.\n\n"
-                            f"Answer:"
-                        )
-                    }
-                ]
-            }]
-        }
+    "contents": [{
+        "parts": [
+            {
+                "text": (
+                    f"You are a highly contextual assistant designed to answer questions based on provided information only. "
+                    f"Follow these rules when answering user queries:\n\n"
 
+                    f"1. Always prioritize context in the following order:\n"
+                    f"   - Relevant chunks retrieved from the database or knowledge base.\n"
+                    f"   - The last 5 messages for conversational relevance.\n"
+                    f"   - The conversation summary for broader context.\n\n"
+
+                    f"2. For follow-up questions:\n"
+                    f"   - Check the last 5 messages to identify what the user is referring to.\n"
+                    f"   - If no clarity is found in the last 5 messages, check the conversation summary.\n\n"
+
+                    f"3. NEVER answer based solely on your own knowledge. Only use the context provided in chunks, messages, or summary.\n\n"
+
+                    f"4. If the context is insufficient:\n"
+                    f"   - Ask the user to clarify or rephrase their query politely.\n\n"
+
+                    f"5. Your responses must be:\n"
+                    f"   - Concise and factual.\n"
+                    f"   - Based explicitly on the context provided.\n"
+                    f"   - Polite and professional.\n\n"
+
+                    f"EXAMPLES:\n"
+                    f"- If the query is ambiguous:\n"
+                    f"  * User: 'What was I asking about?'\n"
+                    f"  * Response: 'Based on our conversations, you were discussing [topic]. Can you clarify further?'\n\n"
+
+                    f"- If the query requires more detail:\n"
+                    f"  * User: 'Explain More.'\n"
+                    f"  * Response: 'Based on our conversation, Article 637 discusses [key points from the context]. Let me know if you'd like a more detailed explanation.'\n\n"
+
+                    f"- If the query is outside the provided context:\n"
+                    f"  * User: 'Tell me about physics.'\n"
+                    f"  * Response: 'Based on the provided context, I cannot answer this question. Can you provide more details or rephrase?'\n\n"
+
+                    f"Begin by answering the following query:\n\n"
+                    f"Here is the relevant context:\n\n{context_str}\n\n"
+                    f"User question: {query}\n\n"
+                    f"Answer:"
+                )
+            }
+        ]
+    }]
+}
+
+
+        # Step 3: Create the payload for the Gemini API
         result, error = call_gemini_api(payload)
         if error:
             logger.error(error)

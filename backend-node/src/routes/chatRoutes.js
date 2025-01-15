@@ -5,100 +5,77 @@ const axios = require('axios');
 const ChatHistory = require('../models/ChatHistory');
 router.post('/ask-ai', authMiddleware, async (req, res) => {
     try {
-        const { query, conversationId } = req.body;
-        const userId = req.user.userId;
-
-        if (!query || !query.trim()) {
-            return res.status(400).json({ msg: 'Query cannot be empty' });
-        }
-
-        // Retrieve or create conversation
-        let conversation;
-        if (conversationId) {
-            conversation = await ChatHistory.findById(conversationId);
-            if (!conversation) {
-                return res.status(404).json({ msg: 'Conversation not found.' });
-            }
-            if (conversation.userId.toString() !== userId) {
-                return res.status(403).json({ msg: 'You are not authorized to access this conversation.' });
-            }
-        } else {
-            conversation = new ChatHistory({
-                userId: userId,
-                conversation: [],
-                summary: "" // Initialize the summary
-            });
-        }
-
-        // Add user message to conversation
-        conversation.conversation.push({ role: 'user', text: query });
-
-        // Check if it's time to update the summary
-        const shouldUpdateSummary = conversation.conversation.length % 10 === 0;
-        console.log(shouldUpdateSummary)
-
-        if (shouldUpdateSummary) {
-            // Prepare conversation text for summarization
-            const conversationText = conversation.conversation
-                .map(msg => `${msg.role}: ${msg.text}`)
-                .join("\n");
-
-            // Call the Python API for summarization
-            const aiServiceUrl = process.env.AI_SERVICE_URL || 'http://localhost:8000';
-            try {
-                const summaryResponse = await axios.post(`${aiServiceUrl}/summarize`,
-                    new URLSearchParams({ conversationText: conversationText }), {
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-                    });
-                const summary = summaryResponse.data.summary;
-                if (summary) {
-                    conversation.summary = summary; // Update the summary
-                }
-            } catch (error) {
-                console.error('Error calling summarization API:', error.message);
-                return res.status(500).json({ msg: 'Failed to summarize conversation.' });
-            }
-        }
-
-        await conversation.save();
-
-        // Build context: Use current summary and last 5 messages
-        const recentMessages = conversation.conversation.slice(-5);
-        const contextParts = recentMessages.map(msg => `${msg.role}: ${msg.text}`);
-        const context = (conversation.summary ? conversation.summary + "\n" : "") + contextParts.join("\n");
-
-        // Call the AI microservice
+      const { query, conversationId } = req.body;
+      const userId = req.user.userId;
+  
+      if (!query || !query.trim()) {
+        return res.status(400).json({ msg: 'Query cannot be empty' });
+      }
+  
+      // Retrieve or create conversation
+      let conversation = conversationId
+        ? await ChatHistory.findById(conversationId)
+        : new ChatHistory({ userId, conversation: [], summary: "" });
+  
+      if (!conversation) {
+        return res.status(404).json({ msg: 'Conversation not found.' });
+      }
+      if (conversation.userId.toString() !== userId) {
+        return res.status(403).json({ msg: 'You are not authorized to access this conversation.' });
+      }
+  
+      // Add user query to the conversation
+      conversation.conversation.push({ role: 'user', text: query });
+  
+      // Update summary if needed
+      if (conversation.conversation.length % 10 === 0) {
         try {
-            const aiServiceUrl = process.env.AI_SERVICE_URL || 'http://localhost:8000';
-            const aiEndpoint = `${aiServiceUrl}/qa`;
-            const aiResponse = await axios.post(aiEndpoint, new URLSearchParams({
-                query: query,
-                context: context,
-                top_k: 3
-            }), {
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-            });
-
-            const aiAnswer = aiResponse.data.answer;
-            conversation.conversation.push({ role: 'assistant', text: aiAnswer });
+          const aiServiceUrl = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+          const summaryResponse = await axios.post(
+            `${aiServiceUrl}/summarize`,
+            new URLSearchParams({ conversationText: conversation.conversation.map(msg => `${msg.role}: ${msg.text}`).join("\n") }),
+            { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+          );
+          conversation.summary = summaryResponse.data.summary || conversation.summary;
         } catch (error) {
-            console.error('Error calling AI service:', error.message);
-            return res.status(500).json({ msg: 'Failed to communicate with AI service.' });
+          console.error('Error summarizing conversation:', error.message);
         }
-
-        await conversation.save();
-
-        // Return the updated conversation
-        res.json({
-            conversationId: conversation._id,
-            conversation: conversation.conversation
-        });
-
+      }
+  
+      // Build context: summary + last 5 messages
+      const context = (conversation.summary ? conversation.summary + "\n" : "") +
+        conversation.conversation.slice(-5).map(msg => `${msg.role}: ${msg.text}`).join("\n");
+  
+      // Call AI service
+      try {
+        const aiServiceUrl = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+        const aiResponse = await axios.post(
+          `${aiServiceUrl}/qa`,
+          new URLSearchParams({ query, context, top_k: 10 }),
+          { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+        );
+  
+        const aiAnswer = aiResponse.data.answer;
+        conversation.conversation.push({ role: 'assistant', text: aiAnswer });
+      } catch (error) {
+        console.error('Error calling AI service:', error.message);
+        return res.status(500).json({ msg: 'Failed to communicate with AI service.' });
+      }
+  
+      // Save the conversation (once at the end)
+      await conversation.save();
+  
+      // Return the updated conversation
+      res.json({
+        conversationId: conversation._id,
+        conversation: conversation.conversation,
+      });
     } catch (error) {
-        console.error('Error in /ask-ai:', error.message);
-        res.status(500).json({ msg: 'Server error in AI communication' });
+      console.error('Error in /ask-ai:', error.message);
+      res.status(500).json({ msg: 'Server error in AI communication' });
     }
-});
+  });
+  
 
 router.get('/history', authMiddleware, async (req, res) => {
     try {

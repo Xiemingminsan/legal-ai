@@ -28,6 +28,7 @@ def summarize_with_gemini(conversation_text):
         str: The summarized text or an empty string on failure.
     """
     prompt = f"Summarize the following conversation concisely:\n\n{conversation_text}\n\nSummary:"
+    print("here")
     payload = {
         "contents": [
             {
@@ -46,6 +47,7 @@ def summarize_with_gemini(conversation_text):
 
         if response.status_code == 200:
             data = response.json()
+            print(data)
             candidates = data.get("candidates", [])
             if candidates:
                 return candidates[0]["content"]["parts"][0]["text"].strip()

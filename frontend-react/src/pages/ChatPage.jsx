@@ -48,16 +48,18 @@ const ChatPage = () => {
   // 3. Send a user query to the QA endpoint
   const sendAIQuery = async (query) => {
     if (!query.trim()) return;
+  
     try {
+      // Add the user's query to the message state
       setMessages((prev) => [...prev, { role: 'user', text: query }]);
       setIsLoading(true);
-
+  
       const token = localStorage.getItem('token');
       const response = await axios.post(
         'http://localhost:5000/api/chat/ask-ai',
         {
-          query,
-          conversationId: conversationId,
+          conversationId: conversationId || null, // Send conversationId if it exists
+          query, // Send only the query
         },
         {
           headers: {
@@ -66,16 +68,24 @@ const ChatPage = () => {
           },
         }
       );
-
+  
       const data = response.data;
+  
+      // Update conversationId if it changes
       if (data.conversationId && data.conversationId !== conversationId) {
         setConversationId(data.conversationId);
       }
+  
+      // Get the latest AI message and add it to the state
       const latestMessage = data.conversation[data.conversation.length - 1];
       if (latestMessage && latestMessage.role === 'assistant') {
         setMessages((prev) => [...prev, { role: 'ai', text: latestMessage.text }]);
       }
-      await loadConversations();
+  
+      // Optionally reload the conversation list
+      if (typeof loadConversations === "function") {
+        await loadConversations();
+      }
     } catch (error) {
       console.error('Error sending message:', error);
       setMessages((prev) => [
@@ -89,6 +99,7 @@ const ChatPage = () => {
       setIsLoading(false);
     }
   };
+  
 
   // 4. Handle user’s “Send” action
   const sendMessage = async (e) => {
