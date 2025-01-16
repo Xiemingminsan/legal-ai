@@ -50,8 +50,11 @@ function Dashboard() {
       formData.append('file', file);
       formData.append('category', category);
       formData.append('docScope', docScope);
-      console.log('docScope:', docScope);
-      console.log('category:', category);
+      console.log('Inspecting FormData:');
+      for (let [key, value] of formData.entries()) {
+        console.log(`${key}:`, value);
+      }
+
 
       const response = await axios.post(
         'http://localhost:5000/api/documents/upload',
@@ -67,6 +70,7 @@ function Dashboard() {
           },
         }
       );
+
 
       const docId = response.data.doc._id;
       if (docId) {

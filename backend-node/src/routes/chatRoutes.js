@@ -15,7 +15,7 @@ router.post('/ask-ai', authMiddleware, async (req, res) => {
       // Retrieve or create conversation
       let conversation = conversationId
         ? await ChatHistory.findById(conversationId)
-        : new ChatHistory({ userId, conversation: [], summary: "" });
+        : new ChatHistory({ userId, conversation: [], summary: "", chunksUsed: [] });
   
       if (!conversation) {
         return res.status(404).json({ msg: 'Conversation not found.' });
@@ -44,7 +44,8 @@ router.post('/ask-ai', authMiddleware, async (req, res) => {
   
       // Build context: summary + last 5 messages
       const context = (conversation.summary ? conversation.summary + "\n" : "") +
-        conversation.conversation.slice(-5).map(msg => `${msg.role}: ${msg.text}`).join("\n");
+        conversation.conversation.slice(-20).map(msg => `${msg.role}: ${msg.text}`).join("\n") +
+        conversation.chunksUsed.slice(-5).map(chunk => `Chunk from doc ${chunk.doc_id}:\n${chunk.text}\n`);
   
       // Call AI service
       try {
@@ -56,7 +57,18 @@ router.post('/ask-ai', authMiddleware, async (req, res) => {
         );
   
         const aiAnswer = aiResponse.data.answer;
+        const usedChunks = aiResponse.data.chunksUsed || [];
         conversation.conversation.push({ role: 'assistant', text: aiAnswer });
+
+        // Append used chunks to chunksUsed and maintain maximum of 50
+        if (usedChunks.length > 0) {
+          conversation.chunksUsed = [...conversation.chunksUsed, ...usedChunks];
+
+          // Ensure only the last 50 chunks are kept
+          if (conversation.chunksUsed.length > 50) {
+              conversation.chunksUsed = conversation.chunksUsed.slice(-50);
+          }
+      }
       } catch (error) {
         console.error('Error calling AI service:', error.message);
         return res.status(500).json({ msg: 'Failed to communicate with AI service.' });

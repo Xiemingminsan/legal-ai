@@ -87,21 +87,22 @@ router.post('/upload', authMiddleware, upload.single('file'), async (req, res) =
     });
     
     // Process with AI service asynchronously
-    try {
-      const form = new FormData();
-      form.append('doc_id', newDoc._id.toString());
-      form.append('pdf_path', pdfFullPath);
-      form.append('doc_scope', docScope);
-      form.append('category', category);
+      try {
+        const form = new FormData();
+        form.append('doc_id', newDoc._id.toString());
+        form.append('pdf_path', pdfFullPath);
+        form.append('doc_scope', docScope);
+        form.append('category', category);
+        console.log("Form data:", form);
 
-      console.log("Sending request to AI service...");
-      console.log("Document ID:", newDoc._id.toString());
+        console.log("Sending request to AI service...");
+        console.log("Document ID:", newDoc._id.toString());
 
-      
-      const response = await axios.post(`${aiServiceUrl}/embed_document`, form, {
-        headers: form.getHeaders(),
-        timeout: 300000 // 5 minute timeout
-      });
+
+        const response = await axios.post(`${aiServiceUrl}/embed_document`, form, {
+          headers: form.getHeaders(),
+          timeout: 300000 // 5 minute timeout
+        });
 
       console.log("AI service response:", response.data);
 
@@ -185,7 +186,7 @@ router.get('/:id/status', authMiddleware, async (req, res) => {
 });
 
 // DELETE /api/documents/deleteAll
-router.delete('/deleteAll', authMiddleware, async (req, res) => {
+router.delete('/deleteAll', async (req, res) => {
     try {
         // Find all documents to get file paths
         const documents = await Document.find({});
