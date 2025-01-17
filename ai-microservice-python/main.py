@@ -1,34 +1,109 @@
 # main.py
+import datetime
 import os
 import json
 import logging
-import datetime
+from pathlib import Path
+from typing import Any, List, Dict, Optional
 
-from typing import Any, List, Dict
-from fastapi import FastAPI, Form, HTTPException # type: ignore
-from fastapi.middleware.cors import CORSMiddleware # type: ignore
-import uvicorn # type: ignore
-import faiss # type: ignore
+import faiss
 import numpy as np
-import re
-from nltk.tokenize import word_tokenize  # type: ignore # Ensure nltk.tokenize is imported
-
-# Our modular imports
-from utils.pdf_extractor import PDFExtractor
-from utils.rag_processor import CompleteRAGProcessor
-from utils.query_preprocessor import QueryPreprocessor
-
-# Suppose we have these helpers from your prior code
+from fastapi import FastAPI, Form, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+import uvicorn
+from nltk.tokenize import word_tokenize
 from dotenv import load_dotenv
+
+from utils.pdf_extractor import PDFExtractor
+from utils.rag_processor import RAGProcessor
+from utils.query_preprocessor import QueryPreprocessor
 from gemini_helper import call_gemini_api
 from summary import summarize_with_gemini
 
+# Load environment variables
 load_dotenv()
+
+# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI()
+# Constants and file paths
+CACHE_DIR = Path("./cache")
+DOCUMENTS_STORE_PATH = CACHE_DIR / "documents_store.json"
+FAISS_INDEX_PATH = CACHE_DIR / "faiss_index_file.index"
+DIMENSION = 384  # for "all-MiniLM-L6-v2"
 
+CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+class GlobalState:
+    """Singleton class to manage global state"""
+    _instance = None
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance.initialize()
+        return cls._instance
+    
+    def initialize(self):
+        """Initialize or load the FAISS index and documents store"""
+        self.documents_store = []
+        
+        # Load documents store
+        if DOCUMENTS_STORE_PATH.exists():
+            try:
+                with open(DOCUMENTS_STORE_PATH, 'r', encoding='utf-8') as f:
+                    self.documents_store = json.load(f)
+                logger.info("Loaded existing documents store")
+            except Exception as e:
+                logger.error(f"Failed to load documents store: {e}")
+        
+        # Initialize or load FAISS index
+        try:
+            if FAISS_INDEX_PATH.exists():
+                self.faiss_index = faiss.read_index(str(FAISS_INDEX_PATH))
+                logger.info("Loaded existing FAISS index")
+            else:
+                self.faiss_index = faiss.IndexFlatIP(DIMENSION)
+                logger.info("Created new FAISS index")
+        except Exception as e:
+            logger.error(f"Error initializing FAISS index: {e}")
+            self.faiss_index = faiss.IndexFlatIP(DIMENSION)
+        
+        # Initialize RAG processor with the existing FAISS index
+        self.rag_processor = RAGProcessor(
+            embedding_model_name="sentence-transformers/all-MiniLM-L6-v2",
+            batch_size=32,
+            cache_dir=str(CACHE_DIR),
+            faiss_index=self.faiss_index
+        )
+    
+    async def save_state(self):
+        """Save the current state to disk"""
+        try:
+            # Save FAISS index
+            faiss.write_index(self.faiss_index, str(FAISS_INDEX_PATH))
+            
+            # Save documents store
+            with open(DOCUMENTS_STORE_PATH, 'w', encoding='utf-8') as f:
+                json.dump(self.documents_store, f, ensure_ascii=False, indent=2)
+            
+            logger.info("System state saved successfully")
+        except Exception as e:
+            logger.error(f"Error saving system state: {e}")
+            raise
+    
+    def clear_state(self):
+        """Clear the current state"""
+        self.faiss_index = faiss.IndexFlatIP(DIMENSION)
+        self.documents_store.clear()
+        self.rag_processor.update_index(self.faiss_index)
+
+# Initialize FastAPI
+app = FastAPI()
+global_state = GlobalState()
+
+# CORS Middleware configuration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://localhost:5000", "http://localhost:8000"],
@@ -37,50 +112,43 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# File paths
-FAISS_INDEX_PATH = "faiss_index_file.index"
-DOCUMENTS_STORE_PATH = "documents_store.json"
+@app.get("/faiss/index")
+async def get_faiss_index_info():
+    index = global_state.faiss_index
+    return {
+        "faiss_index": {
+            "dimension": index.d,
+            "number_of_vectors": index.ntotal,
+            "metric": index.metric_type
+        }
+    }
 
-# Initialize FAISS
-DIMENSION = 384  # for "all-MiniLM-L6-v2"
-try:
-    if os.path.exists(FAISS_INDEX_PATH):
-        faiss_index = faiss.read_index(FAISS_INDEX_PATH)
-        logger.info("Loaded existing FAISS index")
-    else:
-        faiss_index = faiss.IndexFlatIP(DIMENSION)
-        logger.info("Created new FAISS index")
-except Exception as e:
-    logger.error(f"Error initializing FAISS index: {e}")
-    faiss_index = faiss.IndexFlatIP(DIMENSION)
-
-# Initialize documents store
-if os.path.exists(DOCUMENTS_STORE_PATH):
-    with open(DOCUMENTS_STORE_PATH, 'r', encoding='utf-8') as f:
-        documents_store = json.load(f)
-    logger.info("Loaded existing documents store")
-else:
-    documents_store = []
-    logger.info("Created new documents store")
-
-# Create a single global rag_processor instance
-rag_processor = CompleteRAGProcessor(
-    embedding_model_name="sentence-transformers/all-MiniLM-L6-v2",
-    batch_size=32,           # adjustable
-    use_global_tfidf=False,  # use per-document TF-IDF by default
-    faiss_index=faiss_index  # Pass the global FAISS index
-)
-
-def save_faiss_state():
-    """Persist the FAISS index and documents metadata to disk."""
+@app.get("/faiss/documents")
+async def list_faiss_documents():
     try:
-        faiss.write_index(faiss_index, FAISS_INDEX_PATH)
-        with open(DOCUMENTS_STORE_PATH, 'w', encoding='utf-8') as f:
-            json.dump(documents_store, f, ensure_ascii=False, indent=2)
-        logger.info("FAISS state saved successfully.")
+        return {"documents": global_state.documents_store}
     except Exception as e:
-        logger.error(f"Error saving FAISS state: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
+@app.delete("/faiss/clear")
+async def clear_faiss_index():
+    try:
+        global_state.clear_state()
+        await global_state.save_state()
+        return {"status": "success", "message": "FAISS index and documents cleared"}
+    except Exception as e:
+        logger.error(f"Error clearing FAISS index: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize system state on startup."""
+    logger.info("Application starting up with initialized global state")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Save state on shutdown."""
+    await global_state.save_state()
 
 @app.post("/embed_document")
 async def embed_document(
@@ -88,53 +156,56 @@ async def embed_document(
     pdf_path: str = Form(...),
     doc_scope: str = Form(...),
     category: str = Form(...)
-):
+) -> Dict[str, Any]:
     """
-    - Extract PDF text
-    - Pass it to the RAG processor
-    - Add embeddings to FAISS
-    - Save chunk info in documents_store
+    Process and embed a document using the new RAG system.
+    
+    Args:
+        doc_id: Unique document identifier
+        pdf_path: Path to the PDF file
+        doc_scope: Document scope/domain
+        category: Document category
     """
     try:
         logger.info(f"Processing doc_id={doc_id}, pdf_path={pdf_path}")
 
-        # 1) Extract text
+        # 1. Extract text from PDF
         text = PDFExtractor.extract_text_from_pdf(pdf_path)
         if not text:
-            raise HTTPException(status_code=400, detail="No text extracted from PDF")
+            raise HTTPException(
+                status_code=400,
+                detail="No text extracted from PDF"
+            )
 
-        # 2) RAG pipeline
-        result = rag_processor.process_document(doc_id, text)
-
-        embeddings = result["embeddings"]
-        if embeddings.shape[0] > 0:
-            faiss_index.add(embeddings)
-        else:
-            logger.warning(f"No embeddings generated for doc_id={doc_id}")
-
-        # 3) Store metadata
+        # 2. Process document with new RAG system
+        result = await global_state.rag_processor.process_document(doc_id, text)
+        
+        # 3. Store document metadata
         current_time = datetime.datetime.utcnow().isoformat()
         filename = os.path.basename(pdf_path)
-        # The 'search_index' aligns with 'embeddings'
-        for idx, entry in enumerate(result["search_index"]):
-            documents_store.append({
+        
+        # Add entries to documents store
+        chunks = result["chunk_data"]  # Use the correct key that holds chunk info
+        print(f"Number of chunks: {len(chunks)}")
+        for i, chunk in enumerate(chunks):
+            global_state.documents_store.append({
                 "doc_id": doc_id,
                 "title": filename,
-                "text": entry["original_chunk"],
-                "index": len(documents_store),
+                "text": chunk.original_text,
+                "index": len(global_state.documents_store),
                 "uploadDate": current_time,
                 "docScope": doc_scope,
                 "category": category,
-                "status": "completed"
+                "status": "completed",
             })
 
-        save_faiss_state()
+        await global_state.save_state()
 
         return {
             "status": "success",
             "doc_id": doc_id,
-            "chunks_added": len(result["search_index"]),
-            "stats": result["stats"]
+            "chunks_added": result["num_chunks"],
+            "stats": result["metadata"]
         }
 
     except Exception as e:
@@ -144,7 +215,7 @@ async def embed_document(
 @app.get("/documents/{doc_id}/status")
 async def get_document_status(doc_id: str):
     try:
-        doc_chunks = [doc for doc in documents_store if doc["doc_id"] == doc_id]
+        doc_chunks = [doc for doc in global_state.documents_store if doc["doc_id"] == doc_id]
         if not doc_chunks:
             return {"status": "not_found", "progress": 0}
 
@@ -158,80 +229,57 @@ async def get_document_status(doc_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/search")
-async def search_similar_chunks(query: str = Form(...), top_k: int = Form(3)):
+async def search_similar_chunks(
+    query: str = Form(...),
+    top_k: int = Form(3),
+    semantic_weight: float = Form(0.7)
+) -> Dict[str, Any]:
+    """
+    Hybrid search endpoint using the new RAG system.
+    
+    Args:
+        query: Search query text
+        top_k: Number of results to return
+        semantic_weight: Weight for semantic search vs lexical search (0-1)
+    """
     try:
-        if not documents_store or faiss_index.ntotal == 0:
+        if not global_state.documents_store or global_state.rag_processor.index.ntotal == 0:
             return {"results": []}
+        
+        # Perform hybrid search
+        raw_results = await global_state.rag_processor.search(
+            query=query,
+            top_k=top_k,
+            semantic_weight=semantic_weight
+        )
 
-        qp = QueryPreprocessor()
-        processed_query = qp.preprocess_query(query)
-        logger.info(f"Search query preprocessed => '{processed_query}'")
-
-        # 1) Exact matches
-        exact_matches = []
-        lower_q = processed_query.lower()
-        for doc in documents_store:
-            if lower_q in doc["text"].lower():
-                exact_matches.append({
-                    "doc_id": doc["doc_id"],
-                    "text": doc["text"],
-                    "similarity": 1.0,
-                    "semantic_score": 1.0,
-                    "exact_match_score": 1.0,
-                    "match_type": "exact"
+        # Format results with document metadata
+        formatted_results = []
+        for result in raw_results:
+            # Find corresponding document store entry
+            doc_entry = next(
+                (doc for doc in global_state.documents_store 
+                 if doc["doc_id"] == result["doc_id"] and 
+                 doc["text"] == result["text"]),
+                None
+            )
+            
+            if doc_entry:
+                formatted_results.append({
+                    "doc_id": result["doc_id"],
+                    "text": result["text"],
+                    "similarity": result["score"],
+                    "title": doc_entry.get("title", ""),
+                    "docScope": doc_entry.get("docScope", ""),
+                    "category": doc_entry.get("category", ""),
+                    "uploadDate": doc_entry.get("uploadDate", ""),
+                    "special_matches": result["special_matches"]
                 })
 
-        if len(exact_matches) >= top_k:
-            return {"results": exact_matches[:top_k]}
-
-        # 2) Semantic search
-        remaining_slots = top_k - len(exact_matches)
-        if remaining_slots > 0:
-            # embed query once
-            from sentence_transformers import SentenceTransformer # type: ignore
-            model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
-            q_emb = model.encode([processed_query], convert_to_numpy=True)
-            faiss.normalize_L2(q_emb)
-            distances, indices = faiss_index.search(q_emb, faiss_index.ntotal)
-
-            semantic_matches = []
-            seen_doc_ids = {m["doc_id"] for m in exact_matches}
-
-            for idx, score in zip(indices[0], distances[0]):
-                if idx < 0:
-                    continue
-                doc = documents_store[idx]
-                if doc["doc_id"] in seen_doc_ids:
-                    continue
-                semantic_matches.append({
-                    "doc_id": doc["doc_id"],
-                    "text": doc["text"],
-                    "similarity": float(score),
-                    "semantic_score": float(score),
-                    "exact_match_score": 0.0,
-                    "match_type": "semantic"
-                })
-
-            # # After collecting semantic_matches
-            # # Define the exact reference pattern based on the query (for example, "article 3")
-            # # Adjust this pattern dynamically if you have multiple numeric references
-            # reference = processed_query  # assuming processed_query holds the refined query like "article 3"
-            # # Create a regex pattern to match the exact reference with word boundaries
-            # ref_pattern = re.compile(r'\b' + re.escape(reference) + r'\b', re.IGNORECASE)
-
-            # # Filter semantic matches to only include those that contain the exact reference
-            # filtered_semantic_matches = []
-            # for match in semantic_matches:
-            #     if ref_pattern.search(match["text"]):
-            #         filtered_semantic_matches.append(match)
-
-            # # Use filtered_semantic_matches instead of semantic_matches from here on
-            # semantic_matches = filtered_semantic_matches
-
-            combined = exact_matches + semantic_matches[:remaining_slots]
-            return {"results": combined}
-
-        return {"results": exact_matches}
+        return {
+            "results": formatted_results,
+            "query_processed": query
+        }
 
     except Exception as e:
         logger.error(f"Search error: {e}")
@@ -312,37 +360,6 @@ async def rag_qa(query: str = Form(...), context: str = Form(...), top_k: int = 
         logger.error(f"QA error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/faiss/index")
-async def get_faiss_index_info():
-    if faiss_index is None:
-        raise HTTPException(status_code=404, detail="FAISS index not found")
-    return {
-        "faiss_index": {
-            "dimension": faiss_index.d,
-            "number_of_vectors": faiss_index.ntotal,
-            "metric": faiss_index.metric_type
-        }
-    }
-
-@app.get("/faiss/documents")
-async def list_faiss_documents():
-    try:
-        return {"documents": documents_store}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.delete("/faiss/clear")
-async def clear_faiss_index():
-    global faiss_index, documents_store
-    try:
-        faiss_index = faiss.IndexFlatIP(DIMENSION)
-        documents_store.clear()
-        save_faiss_state()
-        return {"status": "success", "message": "FAISS index and documents cleared"}
-    except Exception as e:
-        logger.error(f"Error clearing FAISS index: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
 @app.post("/summarize")
 async def summarize(conversationText: str = Form(...)):
     try:
@@ -358,7 +375,7 @@ def summarize_doc(doc_params: Dict[str, Any]):
     doc_id = doc_params.get("docId")
     mode = doc_params.get("mode", "summary")
 
-    relevant_chunks = [d for d in documents_store if d["doc_id"] == doc_id]
+    relevant_chunks = [d for d in global_state.documents_store if d["doc_id"] == doc_id]
     if not relevant_chunks:
         return {"error": "No chunks found for this documentId."}
 
@@ -386,7 +403,7 @@ def classify_doc(doc_params: Dict[str, Any]):
     if not doc_id:
         return {"error": "No docId provided"}
 
-    relevant_chunks = [d for d in documents_store if d["doc_id"] == doc_id]
+    relevant_chunks = [d for d in global_state.documents_store if d["doc_id"] == doc_id]
     if not relevant_chunks:
         return {"error": "No chunks found for this docId"}
 
