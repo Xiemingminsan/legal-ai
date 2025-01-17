@@ -27,10 +27,10 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Constants and file paths
 CACHE_DIR = Path("./cache")
 DOCUMENTS_STORE_PATH = CACHE_DIR / "documents_store.json"
 FAISS_INDEX_PATH = CACHE_DIR / "faiss_index_file.index"
+BM25_STORE_PATH = CACHE_DIR / "bm25_store.json"  # New path for BM25 data
 DIMENSION = 384  # for "all-MiniLM-L6-v2"
 
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
@@ -46,8 +46,9 @@ class GlobalState:
         return cls._instance
     
     def initialize(self):
-        """Initialize or load the FAISS index and documents store"""
+        """Initialize or load the FAISS index, BM25, and documents store"""
         self.documents_store = []
+        self.tokenized_texts = []  # Store for BM25 tokenized texts
         
         # Load documents store
         if DOCUMENTS_STORE_PATH.exists():
@@ -57,6 +58,16 @@ class GlobalState:
                 logger.info("Loaded existing documents store")
             except Exception as e:
                 logger.error(f"Failed to load documents store: {e}")
+        
+        # Load BM25 data if exists
+        if BM25_STORE_PATH.exists():
+            try:
+                with open(BM25_STORE_PATH, 'r', encoding='utf-8') as f:
+                    bm25_data = json.load(f)
+                    self.tokenized_texts = bm25_data['tokenized_texts']
+                logger.info("Loaded existing BM25 data")
+            except Exception as e:
+                logger.error(f"Failed to load BM25 data: {e}")
         
         # Initialize or load FAISS index
         try:
@@ -77,6 +88,12 @@ class GlobalState:
             cache_dir=str(CACHE_DIR),
             faiss_index=self.faiss_index
         )
+        
+        # Initialize BM25 with existing tokenized texts
+        if self.tokenized_texts:
+            self.rag_processor.tokenized_texts = self.tokenized_texts
+            self.rag_processor.update_bm25(self.tokenized_texts)
+            logger.info(f"Initialized BM25 with {len(self.tokenized_texts)} documents")
     
     async def save_state(self):
         """Save the current state to disk"""
@@ -88,6 +105,13 @@ class GlobalState:
             with open(DOCUMENTS_STORE_PATH, 'w', encoding='utf-8') as f:
                 json.dump(self.documents_store, f, ensure_ascii=False, indent=2)
             
+            # Save BM25 data
+            bm25_data = {
+                'tokenized_texts': self.rag_processor.tokenized_texts
+            }
+            with open(BM25_STORE_PATH, 'w', encoding='utf-8') as f:
+                json.dump(bm25_data, f, ensure_ascii=False, indent=2)
+            
             logger.info("System state saved successfully")
         except Exception as e:
             logger.error(f"Error saving system state: {e}")
@@ -97,8 +121,14 @@ class GlobalState:
         """Clear the current state"""
         self.faiss_index = faiss.IndexFlatIP(DIMENSION)
         self.documents_store.clear()
+        self.tokenized_texts = []
         self.rag_processor.update_index(self.faiss_index)
-
+        self.rag_processor.update_bm25([])  # Reset BM25 index
+        
+        # Remove stored files
+        for path in [DOCUMENTS_STORE_PATH, FAISS_INDEX_PATH, BM25_STORE_PATH]:
+            if path.exists():
+                path.unlink()
 # Initialize FastAPI
 app = FastAPI()
 global_state = GlobalState()
@@ -186,20 +216,17 @@ async def embed_document(
         
         # Add entries to documents store
         chunks = result["chunk_data"]  # Use the correct key that holds chunk info
-        print(f"Number of chunks: {len(chunks)}")
         for i, chunk in enumerate(chunks):
-            print(f"Chunk {i}: {chunk}")
             global_state.documents_store.append({
                 "doc_id": doc_id,
                 "title": filename,
-                "text": chunk.original_text,
+                "text": chunk["original_text"],
                 "index": len(global_state.documents_store),
                 "uploadDate": current_time,
                 "docScope": doc_scope,
                 "category": category,
                 "status": "completed",
             })
-
         await global_state.save_state()
 
         return {

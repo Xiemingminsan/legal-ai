@@ -52,7 +52,8 @@ class RAGProcessor:
         
         
         # Initialize BM25
-        self.bm25 = None
+        self.tokenized_texts: List[List[str]] = []  # Store all tokenized texts
+        self.bm25: Optional[BM25Okapi] = None  # Will be initialized when we have documents
         self.chunks_metadata: List[ChunkMetadata] = []
         
         # Patterns for special matching
@@ -84,6 +85,13 @@ class RAGProcessor:
         """Update the FAISS index reference"""
         self.index = new_index
 
+    def update_bm25(self, corpus):
+        if corpus:
+            self.bm25 = BM25Okapi(corpus)
+        else:
+            self.bm25 = BM25Okapi([["placeholder"]])  # Fallback
+
+
     async def process_document(self, doc_id: str, text: str) -> Dict[str, Any]:
         """
         Process a document asynchronously with smart chunking and parallel processing.
@@ -104,7 +112,17 @@ class RAGProcessor:
                 "num_chunks": len(chunks),
                 "success": True,
                 "metadata": self._generate_doc_metadata(chunk_data),
-                "chunk_data": chunk_data
+                "chunk_data": [
+                    {
+                        "doc_id": chunk.doc_id,
+                        "chunk_id": chunk.chunk_id,
+                        "original_text": chunk.original_text,
+                        "processed_text": chunk.processed_text,
+                        "embedding_idx": chunk.embedding_idx,
+                        "special_matches": chunk.special_matches
+                    }
+                    for chunk in chunk_data
+                ]
             }
 
         except Exception as e:
@@ -244,23 +262,54 @@ class RAGProcessor:
 
     def _update_search_indices(self, chunk_data: List[ChunkMetadata]):
         """Update both BM25 and FAISS indices."""
-        # Update chunks metadata
-        self.chunks_metadata.extend(chunk_data)
-        
-        # Tokenize processed texts from all chunks (existing + new)
-        all_processed_texts = [chunk.processed_text for chunk in self.chunks_metadata]
-        tokenized_corpus = [text.split() for text in all_processed_texts]
-        
-        # Reinitialize BM25
-        self.bm25 = BM25Okapi(tokenized_corpus)
-        
-        # Update FAISS index
-        embeddings = np.vstack([
-            self._get_embedding(chunk.processed_text)
-            for chunk in chunk_data
-        ])
-        faiss.normalize_L2(embeddings)
-        self.index.add(embeddings)
+        try:
+            # Update chunks metadata
+            self.chunks_metadata.extend(chunk_data)
+            
+            # Process new texts for BM25
+            new_tokenized_texts = [
+                chunk.processed_text.split() 
+                for chunk in chunk_data
+            ]
+            
+            # Add to our stored tokenized texts
+            self.tokenized_texts.extend(new_tokenized_texts)
+            
+            # Reinitialize BM25 with all texts
+            if len(self.tokenized_texts) > 0:
+                self.bm25 = BM25Okapi(self.tokenized_texts)
+            
+            # Update FAISS
+            embeddings = np.vstack([
+                self._get_embedding(chunk.processed_text)
+                for chunk in chunk_data
+            ])
+            faiss.normalize_L2(embeddings)
+            self.index.add(embeddings)
+            
+            logger.info(f"Updated indices - BM25 corpus size: {len(self.tokenized_texts)}, FAISS size: {self.index.ntotal}")
+            
+        except Exception as e:
+            logger.error(f"Error updating search indices: {str(e)}")
+            raise
+
+    async def clear_indices(self):
+        """Clear all indices and stored data."""
+        try:
+            # Clear FAISS index
+            self.index = faiss.IndexFlatIP(self.embedding_dim)
+            
+            # Clear BM25 data
+            self.tokenized_texts = []
+            self.bm25 = None
+            
+            # Clear metadata
+            self.chunks_metadata = []
+            
+            logger.info("All indices cleared successfully")
+        except Exception as e:
+            logger.error(f"Error clearing indices: {e}")
+            raise
 
 
     async def search(
@@ -272,53 +321,55 @@ class RAGProcessor:
         """
         Hybrid search combining BM25 and semantic search with smart scoring.
         """
-        # Ensure BM25 is initialized
-        if self.bm25 is None:
-            logger.error("BM25 index is not initialized. Please add documents before searching.")
-            raise ValueError("BM25 index is not initialized.")
-
-        # Ensure FAISS index is populated
-        if self.index.ntotal == 0:
-            logger.error("FAISS index is empty. Please add documents before searching.")
-            raise ValueError("FAISS index is empty.")
-        
-        # Clean query
-        cleaned_query = await self._clean_text(query)
-
         try:
-            # Get BM25 scores
-            bm25_scores = self.bm25.get_scores(cleaned_query.split())
-
+            # Clean query
+            cleaned_query = await self._clean_text(query)
+            print(cleaned_query)
+            
+            # Check if BM25 is initialized
+            if self.bm25 is None:
+                logger.warning("BM25 index not initialized. Using only semantic search.")
+                bm25_scores = np.zeros(len(self.chunks_metadata))
+            else:
+                # Get BM25 scores
+                bm25_scores = self.bm25.get_scores(cleaned_query.split())
+            
             # Get semantic scores
             query_embedding = self._get_embedding(cleaned_query)
             query_embedding = query_embedding.reshape(1, -1)
             faiss.normalize_L2(query_embedding)
-            semantic_distances, semantic_indices = self.index.search(query_embedding, len(self.chunks_metadata))
-
+            semantic_distances, semantic_indices = self.index.search(
+                query_embedding, 
+                min(len(self.chunks_metadata), top_k * 2)  # Get more candidates for hybrid scoring
+            )
+            
             # Combine scores
             combined_scores = []
             for idx, (bm25_score, (semantic_idx, semantic_score)) in enumerate(
                 zip(bm25_scores, zip(semantic_indices[0], semantic_distances[0]))
             ):
+                if semantic_idx < 0:  # FAISS returns -1 for not enough results
+                    continue
+                    
                 # Normalize scores
                 norm_bm25 = bm25_score / max(bm25_scores) if max(bm25_scores) > 0 else 0
                 norm_semantic = (semantic_score + 1) / 2  # Convert from [-1,1] to [0,1]
-
+                
                 # Calculate boost for special matches
                 boost = self._calculate_boost(cleaned_query, self.chunks_metadata[idx])
-
+                
                 # Combine scores with weights
                 final_score = (
                     semantic_weight * norm_semantic +
                     (1 - semantic_weight) * norm_bm25
                 ) * boost
-
+                
                 combined_scores.append((idx, final_score))
-
+            
             # Sort by score and get top_k
             combined_scores.sort(key=lambda x: x[1], reverse=True)
             top_results = combined_scores[:top_k]
-
+            
             # Format results
             results = []
             for idx, score in top_results:
@@ -330,11 +381,11 @@ class RAGProcessor:
                     "score": float(score),
                     "special_matches": chunk.special_matches
                 })
-
+            
             return results
-
+            
         except Exception as e:
-            logger.error(f"Search error: {e}")
+            logger.error(f"Error during search: {str(e)}")
             raise
 
 
