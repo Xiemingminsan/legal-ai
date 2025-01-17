@@ -188,6 +188,7 @@ async def embed_document(
         chunks = result["chunk_data"]  # Use the correct key that holds chunk info
         print(f"Number of chunks: {len(chunks)}")
         for i, chunk in enumerate(chunks):
+            print(f"Chunk {i}: {chunk}")
             global_state.documents_store.append({
                 "doc_id": doc_id,
                 "title": filename,
@@ -288,7 +289,9 @@ async def search_similar_chunks(
 @app.post("/qa")
 async def rag_qa(query: str = Form(...), context: str = Form(...), top_k: int = Form(3)):
     try:
-        retrieval_res = await search_similar_chunks(query, top_k)
+        semantic_weight=0.7
+        retrieval_res = await search_similar_chunks(query, top_k,semantic_weight)
+        
         chunks = retrieval_res.get("results", [])
         if not chunks:
             return {"answer": "No documents found or no index built.", "chunksUsed": []}
