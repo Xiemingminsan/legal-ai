@@ -287,7 +287,7 @@ async def embed_document(
         logger.info(f"Processing doc_id={doc_id}, pdf_path={pdf_path}")
 
         # Extract text from PDF
-        text = PDFExtractor.extract_text_from_pdf(pdf_path)
+        text = PDFExtractor.extract_content(pdf_path)
         if not text:
             raise HTTPException(status_code=400, detail="No text extracted from PDF")
 
