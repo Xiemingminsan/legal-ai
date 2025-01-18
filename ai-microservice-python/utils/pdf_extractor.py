@@ -93,22 +93,3 @@ class PDFExtractor:
                 errors.append(error_msg)
 
         raise HTTPException(status_code=400, detail=f"Failed to extract text after {extractor.max_retries} attempts: {', '.join(errors)}")
-
-
-# Example Usage
-if __name__ == "__main__":
-    # Initialize logger
-    logging.basicConfig(level=logging.INFO)
-
-    try:
-        # Specify your PDF path
-        pdf_path = "path/to/your.pdf"
-
-        # Extract text with the simplified X method
-        text = PDFExtractor.X(pdf_path)
-        print(f"Extracted Text:\n{text}")
-
-    except HTTPException as e:
-        logger.error(f"Extraction failed: {e.detail}")
-    except Exception as e:
-        logger.error(f"An unexpected error occurred: {e}")

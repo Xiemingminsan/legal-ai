@@ -318,70 +318,75 @@ class RAGProcessor:
             raise
 
     async def search(
-        self,
-        query: str,
-        top_k: int = 5,
-        semantic_weight: float = 0.7
-    ) -> List[Dict[str, Any]]:
+    self,
+    query: str,
+    top_k: int = 5,
+    semantic_weight: float = 0.5
+) -> List[Dict[str, Any]]:
         """
         Hybrid search combining BM25 and semantic search with smart scoring.
+        Ensures all chunks are considered regardless of top_k value.
         """
         try:
-        # Validate top_k
+            # Validate top_k
             if top_k <= 0:
                 raise ValueError("top_k must be greater than 0.")
 
-        # Check if chunks_metadata is empty
+            # Check if chunks_metadata is empty
             if not self.chunks_metadata:
                 logger.warning("Chunks metadata is empty. No data to search.")
-                return []  # Return empty result instead of raising an error
+                return []
+
             # Clean query
             cleaned_query = await self._clean_text(query)
             print("cleaned", cleaned_query)
-            
-            # Check if BM25 is initialized
+
+            # Get BM25 scores for ALL chunks
             if self.bm25 is None:
                 logger.warning("BM25 index not initialized. Using only semantic search.")
                 bm25_scores = np.zeros(len(self.chunks_metadata))
             else:
-                # Get BM25 scores
                 bm25_scores = self.bm25.get_scores(cleaned_query.split())
-            
-            # Get semantic scores
+
+            # Get semantic scores for ALL chunks
             query_embedding = self._get_embedding(cleaned_query)
             query_embedding = query_embedding.reshape(1, -1)
             faiss.normalize_L2(query_embedding)
-            k = min(len(self.chunks_metadata), top_k * 2)
-            if k <= 0:
-                raise ValueError("Invalid value of k. Ensure chunks_metadata is not empty.")
-
-            semantic_distances, semantic_indices = self.index.search(query_embedding, k)
             
-            # Combine scores
+            # Get ALL semantic scores
+            k = len(self.chunks_metadata)  # Get scores for ALL chunks
+            semantic_distances, semantic_indices = self.index.search(query_embedding, k)
+
+            # Combine scores for ALL chunks
             combined_scores = []
-            for idx, (bm25_score, (semantic_idx, semantic_score)) in enumerate(
-                zip(bm25_scores, zip(semantic_indices[0], semantic_distances[0]))
-            ):
-                if semantic_idx < 0:  # FAISS returns -1 for not enough results
+            for idx in range(len(self.chunks_metadata)):
+                bm25_score = bm25_scores[idx]
+                semantic_idx_pos = np.where(semantic_indices[0] == idx)[0]
+                
+                if len(semantic_idx_pos) > 0:
+                    semantic_score = semantic_distances[0][semantic_idx_pos[0]]
+                else:
                     continue
-                    
+
                 # Normalize scores
                 norm_bm25 = bm25_score / max(bm25_scores) if max(bm25_scores) > 0 else 0
                 norm_semantic = (semantic_score + 1) / 2  # Convert from [-1,1] to [0,1]
+                
                 # Calculate boost for special matches
                 boost = self._calculate_boost(cleaned_query, self.chunks_metadata[idx])
+                
                 # Combine scores with weights
                 final_score = (
                     semantic_weight * norm_semantic +
                     (1 - semantic_weight) * norm_bm25
                 ) * boost
-                
+
                 combined_scores.append((idx, final_score))
-            
-            # Sort by score and get top_k
+
+            # Sort ALL scores and get top_k
             combined_scores.sort(key=lambda x: x[1], reverse=True)
             top_results = combined_scores[:top_k]
-            
+
             # Format results
             results = []
             for idx, score in top_results:
@@ -393,14 +398,12 @@ class RAGProcessor:
                     "score": float(score),
                     "special_matches": chunk.special_matches
                 })
-            
-            return results
-            
-        except Exception as e:
-            # Log the full traceback
-            logger.error("Error during search:\n" + traceback.format_exc())
-            raise  # Optionally re-raise the exception to propagate it
 
+            return results
+
+        except Exception as e:
+            logger.error("Error during search:\n" + traceback.format_exc())
+            raise
 
     def _calculate_boost(self, query: str, chunk: ChunkMetadata) -> float:
         """Calculate boost factor based on special matches."""

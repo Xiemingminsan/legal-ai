@@ -376,6 +376,8 @@ async def search_similar_chunks(
             return {"results": []}
         
         # Perform hybrid search
+
+        # Process document with RAG system
         raw_results = await global_state.rag_processor.search(
             query=query,
             top_k=top_k,
@@ -383,10 +385,8 @@ async def search_similar_chunks(
         )
 
 
-        print("raw result",raw_results)
         # Format results with document metadata
         formatted_results = []
-        print("raw result",raw_results)
         for result in raw_results:
             # Find corresponding document store entry
             doc_entry = next(
