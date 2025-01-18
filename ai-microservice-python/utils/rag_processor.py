@@ -1,4 +1,5 @@
 # rag_system.py
+from enum import global_str
 from typing import List, Dict, Any, Optional, Tuple
 import numpy as np
 import spacy
@@ -12,6 +13,7 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import logging
 from pathlib import Path
+import traceback
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -311,7 +313,6 @@ class RAGProcessor:
             logger.error(f"Error clearing indices: {e}")
             raise
 
-
     async def search(
         self,
         query: str,
@@ -322,9 +323,17 @@ class RAGProcessor:
         Hybrid search combining BM25 and semantic search with smart scoring.
         """
         try:
+        # Validate top_k
+            if top_k <= 0:
+                raise ValueError("top_k must be greater than 0.")
+
+        # Check if chunks_metadata is empty
+            if not self.chunks_metadata:
+                logger.warning("Chunks metadata is empty. No data to search.")
+                return []  # Return empty result instead of raising an error
             # Clean query
             cleaned_query = await self._clean_text(query)
-            print(cleaned_query)
+            print("cleaned", cleaned_query)
             
             # Check if BM25 is initialized
             if self.bm25 is None:
@@ -338,10 +347,11 @@ class RAGProcessor:
             query_embedding = self._get_embedding(cleaned_query)
             query_embedding = query_embedding.reshape(1, -1)
             faiss.normalize_L2(query_embedding)
-            semantic_distances, semantic_indices = self.index.search(
-                query_embedding, 
-                min(len(self.chunks_metadata), top_k * 2)  # Get more candidates for hybrid scoring
-            )
+            k = min(len(self.chunks_metadata), top_k * 2)
+            if k <= 0:
+                raise ValueError("Invalid value of k. Ensure chunks_metadata is not empty.")
+
+            semantic_distances, semantic_indices = self.index.search(query_embedding, k)
             
             # Combine scores
             combined_scores = []
@@ -354,10 +364,8 @@ class RAGProcessor:
                 # Normalize scores
                 norm_bm25 = bm25_score / max(bm25_scores) if max(bm25_scores) > 0 else 0
                 norm_semantic = (semantic_score + 1) / 2  # Convert from [-1,1] to [0,1]
-                
                 # Calculate boost for special matches
                 boost = self._calculate_boost(cleaned_query, self.chunks_metadata[idx])
-                
                 # Combine scores with weights
                 final_score = (
                     semantic_weight * norm_semantic +
@@ -385,8 +393,9 @@ class RAGProcessor:
             return results
             
         except Exception as e:
-            logger.error(f"Error during search: {str(e)}")
-            raise
+            # Log the full traceback
+            logger.error("Error during search:\n" + traceback.format_exc())
+            raise  # Optionally re-raise the exception to propagate it
 
 
     def _calculate_boost(self, query: str, chunk: ChunkMetadata) -> float:
