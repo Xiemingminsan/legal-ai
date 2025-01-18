@@ -95,9 +95,7 @@ class RAGProcessor:
 
 
     async def process_document(self, doc_id: str, text: str) -> Dict[str, Any]:
-        """
-        Process a document asynchronously with smart chunking and parallel processing.
-        """
+        """Process a document asynchronously with smart chunking and parallel processing."""
         try:
             # Generate chunks with proper boundaries
             chunks = await self._generate_smart_chunks(text)
@@ -109,6 +107,10 @@ class RAGProcessor:
             # Update search indices
             self._update_search_indices(chunk_data)
             
+            # Store the processed chunks metadata
+            self.chunks_metadata.extend(chunk_data)  # Add this line
+            
+            # Return processed data
             return {
                 "doc_id": doc_id,
                 "num_chunks": len(chunks),
@@ -131,6 +133,7 @@ class RAGProcessor:
             logger.error(f"Error processing document {doc_id}: {e}")
             raise
 
+        
     async def _generate_smart_chunks(self, text: str, max_chunk_size: int = 512) -> List[str]:
         """
         Generate chunks with intelligent boundary detection that keeps related content together.
@@ -265,9 +268,6 @@ class RAGProcessor:
     def _update_search_indices(self, chunk_data: List[ChunkMetadata]):
         """Update both BM25 and FAISS indices."""
         try:
-            # Update chunks metadata
-            self.chunks_metadata.extend(chunk_data)
-            
             # Process new texts for BM25
             new_tokenized_texts = [
                 chunk.processed_text.split() 
@@ -289,10 +289,14 @@ class RAGProcessor:
             faiss.normalize_L2(embeddings)
             self.index.add(embeddings)
             
-            logger.info(f"Updated indices - BM25 corpus size: {len(self.tokenized_texts)}, FAISS size: {self.index.ntotal}")
+            logger.info(
+                f"Updated indices - BM25 corpus size: {len(self.tokenized_texts)}, "
+                f"FAISS size: {self.index.ntotal}"
+            )
             
         except Exception as e:
             logger.error(f"Error updating search indices: {str(e)}")
+            logger.error(traceback.format_exc())
             raise
 
     async def clear_indices(self):

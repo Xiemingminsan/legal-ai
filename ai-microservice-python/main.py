@@ -1,4 +1,5 @@
 # main.py
+import asyncio
 import datetime
 import os
 import json
@@ -6,6 +7,7 @@ import logging
 from pathlib import Path
 import re
 from typing import Any, List, Dict, Optional
+import traceback
 
 import faiss
 import numpy as np
@@ -52,7 +54,27 @@ class GlobalState:
         self.tokenized_texts = []
         self.is_initialized = False
         
-        # Load documents store first since we need it for BM25
+        # Initialize FAISS index first
+        try:
+            if FAISS_INDEX_PATH.exists():
+                self.faiss_index = faiss.read_index(str(FAISS_INDEX_PATH))
+                logger.info("Loaded existing FAISS index")
+            else:
+                self.faiss_index = faiss.IndexFlatIP(DIMENSION)
+                logger.info("Created new FAISS index")
+        except Exception as e:
+            logger.error(f"Error initializing FAISS index: {e}")
+            self.faiss_index = faiss.IndexFlatIP(DIMENSION)
+        
+        # Initialize RAG processor
+        self.rag_processor = RAGProcessor(
+            embedding_model_name="sentence-transformers/all-MiniLM-L6-v2",
+            batch_size=32,
+            cache_dir=str(CACHE_DIR),
+            faiss_index=self.faiss_index
+        )
+        
+        # Load documents store if exists
         if DOCUMENTS_STORE_PATH.exists():
             try:
                 with open(DOCUMENTS_STORE_PATH, 'r', encoding='utf-8') as f:
@@ -60,80 +82,88 @@ class GlobalState:
                 logger.info(f"Loaded existing documents store with {len(self.documents_store)} documents")
                 
                 # Reconstruct chunks metadata from documents
-                chunks_metadata = []
+                self.chunks_metadata = []
                 for idx, doc in enumerate(self.documents_store):
-                    chunks_metadata.append(ChunkMetadata(
+                    chunk_metadata = ChunkMetadata(
                         doc_id=doc['doc_id'],
                         chunk_id=idx,
                         original_text=doc['text'],
                         processed_text=self._clean_text_for_reload(doc['text']),
                         embedding_idx=idx,
                         special_matches=self._extract_special_matches(doc['text'])
-                    ))
+                    )
+                    self.chunks_metadata.append(chunk_metadata)
                 
-                self.chunks_metadata = chunks_metadata
+                # Update RAG processor with loaded metadata
+                self.rag_processor.chunks_metadata = self.chunks_metadata
+                
                 # Initialize tokenized texts from processed text
                 self.tokenized_texts = [
-                    doc['text'].lower().split() 
-                    for doc in self.documents_store
+                    chunk_metadata.processed_text.split()
+                    for chunk_metadata in self.chunks_metadata
                 ]
-
-                self.is_initialized = True
-                logger.info("System fully initialized with Document store and chunks")
-                self.is_initialized = False
-
-  
+                
+                # Update RAG processor with tokenized texts
+                self.rag_processor.tokenized_texts = self.tokenized_texts
+                self.rag_processor.update_bm25(self.tokenized_texts)
+                
             except Exception as e:
                 logger.error(f"Failed to load documents store: {e}")
                 self.documents_store = []
+                self.chunks_metadata = []
                 self.tokenized_texts = []
-        
-        # Initialize FAISS index
-        try:
-            if FAISS_INDEX_PATH.exists():
-                self.faiss_index = faiss.read_index(str(FAISS_INDEX_PATH))
-                logger.info("Loaded existing FAISS index")
-                self.is_initialized = True
-                logger.info("System fully initialized with Existing FAISS index")
-                self.is_initialized = False
-            else:
-                self.faiss_index = faiss.IndexFlatIP(DIMENSION)
-                logger.info("Created new FAISS index")
-                self.is_initialized = True
-                logger.info("System fully initialized with new FAISS index")
-                self.is_initialized = False
-        except Exception as e:
-            logger.error(f"Error initializing FAISS index: {e}")
-            self.faiss_index = faiss.IndexFlatIP(DIMENSION)
-        
-        # Initialize RAG processor with loaded data
-        self.rag_processor = RAGProcessor(
-        embedding_model_name="sentence-transformers/all-MiniLM-L6-v2",
-        batch_size=32,
-        cache_dir=str(CACHE_DIR),
-        faiss_index=self.faiss_index
-    )
-        if self.documents_store:
-            self.rag_processor.chunks_metadata = self.chunks_metadata
-
-        if hasattr(self, 'chunks_metadata'):
-            self.rag_processor.chunks_metadata = chunks_metadata
-
-        if self.documents_store:
-            self.rag_processor.chunks_metadata = self.chunks_metadata
-            logger.info(f"Assigned {len(self.rag_processor.chunks_metadata)} chunks to RAG processor")
-        
-        # Initialize BM25 with tokenized texts
-        if self.tokenized_texts:
-            self.rag_processor.tokenized_texts = self.tokenized_texts
-            self.rag_processor.update_bm25(self.tokenized_texts)
-            logger.info(f"Initialized BM25 with {len(self.tokenized_texts)} documents")
-            self.is_initialized = True
-            logger.info("System fully initialized with BM25 and all components")
         else:
+            self.chunks_metadata = []
             self.rag_processor.update_bm25([["placeholder"]])
-            logger.info("Initialized empty BM25 index")
+        
+        if len(self.documents_store) != len(self.chunks_metadata):
+            logger.warning("State inconsistency detected during initialization. Rebuilding state...")
+            self.chunks_metadata = []
+            for doc in self.documents_store:
+                chunk_metadata = ChunkMetadata(
+                    doc_id=doc['doc_id'],
+                    chunk_id=len(self.chunks_metadata),
+                    original_text=doc['text'],
+                    processed_text=self._clean_text_for_reload(doc['text']),
+                    embedding_idx=len(self.chunks_metadata),
+                    special_matches=self._extract_special_matches(doc['text'])
+                )
+                self.chunks_metadata.append(chunk_metadata)
+            
+        self.rag_processor.chunks_metadata = self.chunks_metadata
+        self.is_initialized = True
+        logger.info("System fully initialized with Document store, FAISS index, and BM25.")
 
+    async def save_state(self):
+        """Save the current state to disk"""
+        try:
+            if not self.is_initialized:
+                logger.warning("Attempted to save uninitialized state")
+                return
+
+            # Save FAISS index
+            faiss.write_index(self.faiss_index, str(FAISS_INDEX_PATH))
+            
+            # Save documents store
+            with open(DOCUMENTS_STORE_PATH, 'w', encoding='utf-8') as f:
+                json.dump(self.documents_store, f, ensure_ascii=False, indent=2)
+            
+            # Save BM25 data if available
+            if hasattr(self.rag_processor, 'tokenized_texts'):
+                bm25_data = {
+                    'tokenized_texts': self.rag_processor.tokenized_texts
+                }
+                with open(BM25_STORE_PATH, 'w', encoding='utf-8') as f:
+                    json.dump(bm25_data, f, ensure_ascii=False, indent=2)
+
+            logger.info(f"System state saved successfully with {len(self.documents_store)} documents")
+            logger.debug(f"Documents store contents: {self.documents_store}")
+            
+        except Exception as e:
+            logger.error(f"Error saving system state: {e}")
+            raise
+
+    
     def _clean_text_for_reload(self, text: str) -> str:
         """Clean text using same logic as RAGProcessor."""
         # Simplified version of RAGProcessor's _clean_text_sync
@@ -155,59 +185,34 @@ class GlobalState:
             for name, pattern in patterns.items()
         }
 
-    async def save_state(self):
-        """Save the current state to disk"""
-        try:
-            if not self.is_initialized:
-                logger.warning("Attempted to save uninitialized state")
-                return
-
-            # Validate consistency before saving
-            if len(self.documents_store) != len(self.chunks_metadata):
-                logger.error("State inconsistency detected")
-                raise ValueError("Documents and chunks metadata mismatch")
-            # Save FAISS index
-            faiss.write_index(self.faiss_index, str(FAISS_INDEX_PATH))
-            
-            # Save documents store
-            with open(DOCUMENTS_STORE_PATH, 'w', encoding='utf-8') as f:
-                json.dump(self.documents_store, f, ensure_ascii=False, indent=2)
-            
-            # Save BM25 data - store tokenized texts
-            bm25_data = {
-                'tokenized_texts': self.rag_processor.tokenized_texts
-            }
-            with open(BM25_STORE_PATH, 'w', encoding='utf-8') as f:
-                json.dump(bm25_data, f, ensure_ascii=False, indent=2)
-            
-            logger.info(f"System state saved successfully with {len(self.documents_store)} documents")
-        except Exception as e:
-            logger.error(f"Error saving system state: {e}")
-            raise
-
     def clear_and_reset_state(self):
         """Clear and reset the system state."""
-        # Reset FAISS index
-        self.faiss_index = faiss.IndexFlatIP(DIMENSION)
+        try:
+            # Reset FAISS index
+            self.faiss_index = faiss.IndexFlatIP(DIMENSION)
 
-        # Clear document storage and tokenized texts
-        self.documents_store = []
-        self.tokenized_texts = []
-        self.chunks_metadata = []
+            # Clear document storage
+            self.documents_store = []
 
-        # Update RAG processor
-        if hasattr(self, 'rag_processor'):
-            self.rag_processor.update_index(self.faiss_index)
-            self.rag_processor.update_bm25([['placeholder']])
+            # Reset RAG processor
             self.rag_processor.chunks_metadata = []
+            self.rag_processor.tokenized_texts = []
+            self.rag_processor.update_index(self.faiss_index)
+            self.rag_processor.update_bm25([["placeholder"]])
 
-        # Remove stored files
-        for path in [DOCUMENTS_STORE_PATH, FAISS_INDEX_PATH, BM25_STORE_PATH]:
-            if path.exists():
-                path.unlink()
+            # Remove stored files
+            for path in [DOCUMENTS_STORE_PATH, FAISS_INDEX_PATH, BM25_STORE_PATH]:
+                if path.exists():
+                    path.unlink()
 
-        logger.info("System cleared and reset to empty state.")
-
+            logger.info("System state cleared and reset successfully")
+            
+            # Save the empty state
+            asyncio.create_task(self.save_state())
+            
+        except Exception as e:
+            logger.error(f"Error clearing system state: {e}")
+            raise
 
 # Initialize FastAPI
 app = FastAPI()
@@ -253,8 +258,9 @@ async def list_faiss_documents():
 @app.delete("/faiss/clear")
 async def clear_faiss_index():
     try:
-        global_state.clear_state()
-        await global_state.clear_and_reset_state()
+        global_state.clear_and_reset_state()  # Remove await here
+        await global_state.save_state()
+
         return {"status": "success", "message": "FAISS index and documents cleared"}
     except Exception as e:
         logger.error(f"Error clearing FAISS index: {e}")
@@ -277,48 +283,46 @@ async def embed_document(
     doc_scope: str = Form(...),
     category: str = Form(...)
 ) -> Dict[str, Any]:
-    """
-    Process and embed a document using the new RAG system.
-    
-    Args:
-        doc_id: Unique document identifier
-        pdf_path: Path to the PDF file
-        doc_scope: Document scope/domain
-        category: Document category
-    """
     try:
         logger.info(f"Processing doc_id={doc_id}, pdf_path={pdf_path}")
 
-        # 1. Extract text from PDF
+        # Extract text from PDF
         text = PDFExtractor.extract_text_from_pdf(pdf_path)
         if not text:
-            raise HTTPException(
-                status_code=400,
-                detail="No text extracted from PDF"
-            )
+            raise HTTPException(status_code=400, detail="No text extracted from PDF")
 
-        # 2. Process document with new RAG system
+        # Process document with RAG system
         result = await global_state.rag_processor.process_document(doc_id, text)
         
-        # 3. Store document metadata
+        # Update documents store with new entries
         current_time = datetime.datetime.utcnow().isoformat()
         filename = os.path.basename(pdf_path)
         
-        # Add entries to documents store
-        chunks = result["chunk_data"]  # Use the correct key that holds chunk info
-        for i, chunk in enumerate(chunks):
-            global_state.documents_store.append({
+        # Remove any existing entries for this doc_id
+        global_state.documents_store = [
+            doc for doc in global_state.documents_store 
+            if doc["doc_id"] != doc_id
+        ]
+
+        # Add new entries from the processed chunks
+        for chunk_data in result["chunk_data"]:
+            doc_entry = {
                 "doc_id": doc_id,
                 "title": filename,
-                "text": chunk["original_text"],
+                "text": chunk_data["original_text"],
                 "index": len(global_state.documents_store),
                 "uploadDate": current_time,
                 "docScope": doc_scope,
                 "category": category,
-                "status": "completed",
-            })
+                "status": "completed"
+            }
+            global_state.documents_store.append(doc_entry)
+
+        # Save state immediately
         await global_state.save_state()
 
+        logger.info(f"Successfully processed document {doc_id} with {len(result['chunk_data'])} chunks")
+        
         return {
             "status": "success",
             "doc_id": doc_id,
@@ -327,7 +331,7 @@ async def embed_document(
         }
 
     except Exception as e:
-        logger.error(f"Error embedding document: {e}")
+        logger.error(f"Error embedding document: {e}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/documents/{doc_id}/status")
