@@ -99,7 +99,7 @@ router.post('/upload', authMiddleware, upload.single('file'), async (req, res) =
         console.log("Document ID:", newDoc._id.toString());
 
 
-        const response = await axios.post(`${aiServiceUrl}/embed_document`, form, {
+        const response = await axios.post(`${aiServiceUrl}/uploadd`, form, {
           headers: form.getHeaders(),
           timeout: 300000 // 5 minute timeout
         });

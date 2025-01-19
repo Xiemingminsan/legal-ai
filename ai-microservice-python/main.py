@@ -20,6 +20,7 @@ from dotenv import load_dotenv
 from utils.pdf_extractor import PDFExtractor
 from utils.rag_processor import ChunkMetadata, RAGProcessor
 from utils.query_preprocessor import QueryPreprocessor
+from utils.amharic_rag import AmharicRAG
 from gemini_helper import call_gemini_api
 from summary import summarize_with_gemini
 
@@ -563,6 +564,77 @@ def classify_doc(doc_params: Dict[str, Any]):
         classification = "Other"
 
     return {"classification": classification}
+
+@app.post("/uploadd")
+async def upload_document(
+    pdf_path: str = Form(...),
+    title: str = Form(...),
+    category: str = Form(...),
+    docScope: str = Form(...),
+    doc_id: str = Form(...)
+):
+    """Process an Amharic PDF document using a provided file path."""
+    try:
+        # Validate required fields
+        if not title.strip():
+            raise HTTPException(status_code=400, detail="Title is required")
+        if not category.strip():
+            raise HTTPException(status_code=400, detail="Category is required")
+        if not docScope.strip():
+            raise HTTPException(status_code=400, detail="Document Scope is required")
+        if not pdf_path.strip():
+            raise HTTPException(status_code=400, detail="PDF path is required")
+        
+        # Log the received data
+        logger.info(f"Received document upload: {title} | {category} | {docScope} | {doc_id} | {pdf_path}")
+        
+        # Ensure the PDF file exists
+        if not os.path.exists(pdf_path):
+            raise HTTPException(status_code=400, detail="Provided PDF file does not exist")
+        
+        # Process the document with the RAG system
+        logger.info("Processing document with RAG system...")
+        result = rag_system.process_document(pdf_path, doc_id)
+        
+        # Return the result
+        return {
+            "status": "success",
+            "doc_id": doc_id,
+            "title": title,
+            "category": category,
+            "docScope": docScope,
+            "processing_result": result
+        }
+
+    except Exception as e:
+        logger.error(f"Error processing document: {e}")
+        raise HTTPException(status_code=500, detail=f"Error processing document: {str(e)}")
+
+@app.post("/ask")
+async def ask_question(
+    query: str = Form(...),
+    top_k: int = Form(3),
+    semantic_weight: float = Form(0.7)
+):
+    """Ask a question and get raw results with similarity scores."""
+    try:
+        # Call search_and_answer to get matches and scores
+        result = await rag_system.search_and_answer(
+            query=query,
+            top_k=top_k,
+            semantic_weight=semantic_weight
+        )
+
+        # Check if the search was successful
+        if result["status"] != "success":
+            raise HTTPException(status_code=500, detail=result["message"])
+
+        # Return raw JSON for Postman
+        return result
+
+    except Exception as e:
+        logger.error(f"Error during /ask: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/")
 def read_root():
