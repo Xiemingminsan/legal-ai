@@ -7,6 +7,7 @@ function SearchPage() {
   const [query, setQuery] = useState('');
   const [topK, setTopK] = useState(3);
   const [searching, setSearching] = useState(false);
+  const[language, setLanguage] = useState('en');
   const [results, setResults] = useState([]);
   const [error, setError] = useState(null);
 
@@ -27,6 +28,8 @@ function SearchPage() {
       const formData = new FormData();
       formData.append('query', query);
       formData.append('top_k', topK);
+      formData.append('language', language);
+
 
       const response = await axios.post(
         'http://localhost:8000/search',
@@ -85,6 +88,14 @@ function SearchPage() {
           min="1"
           max="100"
         />
+        <select
+            value={language}
+            onChange={(e) => setLanguage(e.target.value)}
+            style={styles.select}
+          >
+            <option value="en">English</option>
+            <option value="amh">Amharic</option>
+          </select>
         <div style={styles.navButtons}>
         <button
           type="submit"

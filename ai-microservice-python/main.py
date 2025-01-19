@@ -1,5 +1,6 @@
 # main.py
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
 import datetime
 import os
 import json
@@ -8,6 +9,11 @@ from pathlib import Path
 import re
 from typing import Any, List, Dict, Optional
 import traceback
+
+from jinja2 import BaseLoader
+from googletrans import Translator
+
+import requests
 
 import faiss
 import numpy as np
@@ -18,9 +24,10 @@ from nltk.tokenize import word_tokenize
 from dotenv import load_dotenv
 
 from utils.pdf_extractor import PDFExtractor
+from utils.amharic_rag import ConcurrentTranslator
+
 from utils.rag_processor import ChunkMetadata, RAGProcessor
 from utils.query_preprocessor import QueryPreprocessor
-from utils.amharic_rag import AmharicRAG
 from gemini_helper import call_gemini_api
 from summary import summarize_with_gemini
 
@@ -35,7 +42,7 @@ CACHE_DIR = Path("./cache")
 DOCUMENTS_STORE_PATH = CACHE_DIR / "documents_store.json"
 FAISS_INDEX_PATH = CACHE_DIR / "faiss_index_file.index"
 BM25_STORE_PATH = CACHE_DIR / "bm25_store.json"  # New path for BM25 data
-DIMENSION = 384  # for "all-MiniLM-L6-v2"
+DIMENSION = 768    # for "all-MiniLM-L6-v2"
 
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -69,7 +76,7 @@ class GlobalState:
         
         # Initialize RAG processor
         self.rag_processor = RAGProcessor(
-            embedding_model_name="sentence-transformers/all-MiniLM-L6-v2",
+            embedding_model_name="sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
             batch_size=32,
             cache_dir=str(CACHE_DIR),
             faiss_index=self.faiss_index
@@ -91,7 +98,8 @@ class GlobalState:
                         original_text=doc['text'],
                         processed_text=self._clean_text_for_reload(doc['text']),
                         embedding_idx=idx,
-                        special_matches=self._extract_special_matches(doc['text'])
+                        special_matches=self._extract_special_matches(doc['text']),
+                        language=doc['language']
                     )
                     self.chunks_metadata.append(chunk_metadata)
                 
@@ -127,7 +135,8 @@ class GlobalState:
                     original_text=doc['text'],
                     processed_text=self._clean_text_for_reload(doc['text']),
                     embedding_idx=len(self.chunks_metadata),
-                    special_matches=self._extract_special_matches(doc['text'])
+                    special_matches=self._extract_special_matches(doc['text']),
+                    language=doc['language']
                 )
                 self.chunks_metadata.append(chunk_metadata)
             
@@ -282,7 +291,8 @@ async def embed_document(
     doc_id: str = Form(...),
     pdf_path: str = Form(...),
     doc_scope: str = Form(...),
-    category: str = Form(...)
+    category: str = Form(...),
+    language: Optional[str] = Form("en")
 ) -> Dict[str, Any]:
     try:
         logger.info(f"Processing doc_id={doc_id}, pdf_path={pdf_path}")
@@ -293,7 +303,7 @@ async def embed_document(
             raise HTTPException(status_code=400, detail="No text extracted from PDF")
 
         # Process document with RAG system
-        result = await global_state.rag_processor.process_document(doc_id, text)
+        result = await global_state.rag_processor.process_document(doc_id, text,language)
         
         # Update documents store with new entries
         current_time = datetime.datetime.utcnow().isoformat()
@@ -315,6 +325,7 @@ async def embed_document(
                 "uploadDate": current_time,
                 "docScope": doc_scope,
                 "category": category,
+                "language": language,
                 "status": "completed"
             }
             global_state.documents_store.append(doc_entry)
@@ -355,7 +366,8 @@ async def get_document_status(doc_id: str):
 async def search_similar_chunks(
     query: str = Form(...),
     top_k: int = Form(3),
-    semantic_weight: float = Form(0.7)
+    semantic_weight: float = Form(0.7),
+    language: Optional[str] = Form("en")
 ) -> Dict[str, Any]:
     """
     Hybrid search endpoint using the new RAG system.
@@ -377,6 +389,13 @@ async def search_similar_chunks(
             return {"results": []}
         
         # Perform hybrid search
+        if language == "en":
+            ab=QueryPreprocessor()
+            query = ab.preprocess_query(query)
+            print("eng",query)
+        else:
+            query = global_state.rag_processor.stem_text(query)
+            print("amh",query)
 
         # Process document with RAG system
         raw_results = await global_state.rag_processor.search(
@@ -384,7 +403,6 @@ async def search_similar_chunks(
             top_k=top_k,
             semantic_weight=semantic_weight
         )
-
 
         # Format results with document metadata
         formatted_results = []
@@ -418,8 +436,43 @@ async def search_similar_chunks(
         logger.error(f"Search error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
+translator = ConcurrentTranslator()
+
+async def translate_to_english(text: str) -> str:
+    """Helper function to translate text to English"""
+    if not text:
+        return ""
+    try:
+        result = await translator.translate_text(text, src='am', dest='en')
+        return result if result else text
+    except Exception as e:
+        logger.error(f"Translation to English failed: {str(e)}")
+        return text
+
+@app.post("/translateE")
+def translate_english_to_amharic(text):
+    api_key = "AIzaSyAERzMwtZUi2ufsJhyeP1tNESr4k_02PSo"
+    base_url = "https://translation.googleapis.com/language/translate/v2"
+    
+    params = {
+        'q': text,
+        'target': 'am',
+        'source': 'en',
+        'key': api_key
+    }
+    
+    response = requests.get(base_url, params=params)
+    
+    if response.status_code == 200:
+        result = response.json()
+        translated_text = result['data']['translations'][0]['translatedText']
+        return translated_text
+    else:
+        return f"Error: {response.status_code}"
+
 @app.post("/qa")
-async def rag_qa(query: str = Form(...), context: str = Form(...), top_k: int = Form(3)):
+async def rag_qa(query: str = Form(...), context: str = Form(...), top_k: int = Form(3), language: Optional[str] = Form("en")):
     try:
         semantic_weight=0.7
         retrieval_res = await search_similar_chunks(query, top_k,semantic_weight)
@@ -430,6 +483,15 @@ async def rag_qa(query: str = Form(...), context: str = Form(...), top_k: int = 
 
         context_texts = [context] + [f"Chunk from doc {c['doc_id']}:\n{c['text']}" for c in chunks]
         context_str = "\n\n".join(context_texts)
+        index = 0
+
+                
+        if language != "en":
+            index = 1
+            query = await translate_to_english(query)
+            print("translated_query",query)
+            context_str = await translate_to_english(context_str)
+            print("translated_context",context_str)
 
         payload = {
     "contents": [{
@@ -484,6 +546,9 @@ async def rag_qa(query: str = Form(...), context: str = Form(...), top_k: int = 
         if error:
             logger.error(f"Gemini error: {error}")
             return {"answer": error, "chunksUsed": chunks}
+        
+        if index == 1:
+            result["answer"] = translate_english_to_amharic(result["answer"])
 
         return {
             "answer": result["answer"],
@@ -565,78 +630,6 @@ def classify_doc(doc_params: Dict[str, Any]):
 
     return {"classification": classification}
 
-@app.post("/uploadd")
-async def upload_document(
-    pdf_path: str = Form(...),
-    title: str = Form(...),
-    category: str = Form(...),
-    docScope: str = Form(...),
-    doc_id: str = Form(...)
-):
-    """Process an Amharic PDF document using a provided file path."""
-    try:
-        # Validate required fields
-        if not title.strip():
-            raise HTTPException(status_code=400, detail="Title is required")
-        if not category.strip():
-            raise HTTPException(status_code=400, detail="Category is required")
-        if not docScope.strip():
-            raise HTTPException(status_code=400, detail="Document Scope is required")
-        if not pdf_path.strip():
-            raise HTTPException(status_code=400, detail="PDF path is required")
-        
-        # Log the received data
-        logger.info(f"Received document upload: {title} | {category} | {docScope} | {doc_id} | {pdf_path}")
-        
-        # Ensure the PDF file exists
-        if not os.path.exists(pdf_path):
-            raise HTTPException(status_code=400, detail="Provided PDF file does not exist")
-        
-        # Process the document with the RAG system
-        logger.info("Processing document with RAG system...")
-        rag_system = AmharicRAG()
-        result = rag_system.process_document(pdf_path, doc_id)
-        
-        # Return the result
-        return {
-            "status": "success",
-            "doc_id": doc_id,
-            "title": title,
-            "category": category,
-            "docScope": docScope,
-            "processing_result": result
-        }
-
-    except Exception as e:
-        logger.error(f"Error processing document: {e}")
-        raise HTTPException(status_code=500, detail=f"Error processing document: {str(e)}")
-
-@app.post("/ask")
-async def ask_question(
-    query: str = Form(...),
-    top_k: int = Form(3),
-    semantic_weight: float = Form(0.7)
-):
-    """Ask a question and get raw results with similarity scores."""
-    try:
-        # Call search_and_answer to get matches and scores
-        rag_system = AmharicRAG()
-        result = await rag_system.search_and_answer(
-            query=query,
-            top_k=top_k,
-            semantic_weight=semantic_weight
-        )
-
-        # Check if the search was successful
-        if result["status"] != "success":
-            raise HTTPException(status_code=500, detail=result["message"])
-
-        # Return raw JSON for Postman
-        return result
-
-    except Exception as e:
-        logger.error(f"Error during /ask: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/")
 def read_root():

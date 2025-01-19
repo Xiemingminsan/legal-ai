@@ -11,6 +11,7 @@ const ChatPage = () => {
     { role: 'ai', text: "Hello! I'm Legal-God AI. How can I assist you with your legal questions today?" }
   ]);
   const [userMessage, setUserMessage] = useState('');
+  const [language, setLanguage] = useState('en'); // New state for language selection
   const [isLoading, setIsLoading] = useState(false);
   const [conversationId, setConversationId] = useState(null);
   const [conversationList, setConversationList] = useState([]);
@@ -45,7 +46,7 @@ const ChatPage = () => {
     setIsLoading(false);
   };
 
-  // 3. Send a user query to the QA endpoint
+  // 3. Send a user query to the QA endpoint, now including language
   const sendAIQuery = async (query) => {
     if (!query.trim()) return;
   
@@ -58,8 +59,9 @@ const ChatPage = () => {
       const response = await axios.post(
         'http://localhost:5000/api/chat/ask-ai',
         {
-          conversationId: conversationId || null, // Send conversationId if it exists
-          query, // Send only the query
+          conversationId: conversationId || null,
+          query,
+          language // Send selected language as part of the request
         },
         {
           headers: {
@@ -125,7 +127,7 @@ const ChatPage = () => {
   // 7. Summarize doc (skip QA)
   const performSummarization = async (docId, mode) => {
     try {
-    console.log('performSummarization', docId, mode);
+      console.log('performSummarization', docId, mode);
       setIsLoading(true);
         
       const token = localStorage.getItem('token');
@@ -159,7 +161,6 @@ const ChatPage = () => {
 
       const summary = response.data.summary || 'No summary available';
       setMessages((prev) => [...prev, { role: 'ai', text: summary }]);
-
 
       await axios.post(
         `http://localhost:5000/api/chat/${newConversationId}/save-message`,
@@ -216,9 +217,9 @@ const ChatPage = () => {
       <aside className="sidebar">
         <h2>Conversations</h2>
         <ul>
-        <button onClick={handleNewChat} className="new-chat-button">
-          New Chat
-        </button>
+          <button onClick={handleNewChat} className="new-chat-button">
+            New Chat
+          </button>
           {conversationList.length > 0 ? (
             conversationList.map((conv) => (
               <li
@@ -246,16 +247,16 @@ const ChatPage = () => {
           <h1>Chat with Legal-God AI</h1>
         </header>
         <div className="messages-container">
-            {messages.map((msg, idx) => (
+          {messages.map((msg, idx) => (
             <div key={idx} className={`message ${msg.role}`}>
-                <div className="avatar">
+              <div className="avatar">
                 {msg.role === 'user' ? <User size={20} /> : <Bot size={20} />}
-                </div>
-                <div className="message-content">
+              </div>
+              <div className="message-content">
                 <ReactMarkdown>{msg.text}</ReactMarkdown>
-                </div>
+              </div>
             </div>
-            ))}
+          ))}
           {isLoading && (
             <div className="message ai">
               <div className="message-content">
@@ -270,6 +271,15 @@ const ChatPage = () => {
           <div ref={messagesEndRef}></div>
         </div>
         <form onSubmit={sendMessage} className="chat-form">
+          {/* Language selection dropdown */}
+          <select
+            value={language}
+            onChange={(e) => setLanguage(e.target.value)}
+            style={{ marginRight: '10px' }} // Inline style example; adjust as needed
+          >
+            <option value="en">English</option>
+            <option value="amh">Amharic</option>
+          </select>
           <input
             type="text"
             value={userMessage}

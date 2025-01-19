@@ -33,11 +33,12 @@ const upload = multer({
 // POST /api/documents/upload
 router.post('/upload', authMiddleware, upload.single('file'), async (req, res) => {
   try {
-    const { title, category, docScope } = req.body;
+    const { title, category, docScope, language } = req.body;
     const file = req.file;
     console.log("Title:", title);
     console.log("Category:", category);
     console.log("Document Scope:", docScope);
+    console.log("Language:", language);
     
     
     // Validation
@@ -54,6 +55,9 @@ router.post('/upload', authMiddleware, upload.single('file'), async (req, res) =
     if(!docScope){
       return res.status(400).json({ msg: 'Document Scope is required' });
     }
+    if(!language){
+      return res.status(400).json({ msg: 'Language is required' });
+    }
 
     // Create document record with initial status
     const newDoc = new Document({
@@ -63,7 +67,8 @@ router.post('/upload', authMiddleware, upload.single('file'), async (req, res) =
       status: 'processing', // Add status field to your schema
       processingError: null,
       category: category || 'uncategorized',
-      docScope: docScope || 'public'
+      docScope: docScope || 'public',
+      language: language || 'en'
     });
     
     await newDoc.save();
@@ -93,13 +98,14 @@ router.post('/upload', authMiddleware, upload.single('file'), async (req, res) =
         form.append('pdf_path', pdfFullPath);
         form.append('doc_scope', docScope);
         form.append('category', category);
+        form.append('language', language);
         console.log("Form data:", form);
 
         console.log("Sending request to AI service...");
         console.log("Document ID:", newDoc._id.toString());
 
 
-        const response = await axios.post(`${aiServiceUrl}/uploadd`, form, {
+        const response = await axios.post(`${aiServiceUrl}/embed_document`, form, {
           headers: form.getHeaders(),
           timeout: 300000 // 5 minute timeout
         });

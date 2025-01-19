@@ -9,12 +9,12 @@
     processingError: { type: String, default: null },
     processingProgress: { type: Number, default: 0 },
     category: { type: String, default: 'uncategorized' },
-    // Add docScope
     docScope: {
       type: String,
       enum: ['private', 'public'],
       default: 'public'
     },
+    language: { type: String, enum:['en','amh'], default: 'en' },
     uploadDate: { type: Date, default: Date.now }
   });
 

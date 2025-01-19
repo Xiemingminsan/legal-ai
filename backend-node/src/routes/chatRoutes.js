@@ -5,7 +5,7 @@ const axios = require('axios');
 const ChatHistory = require('../models/ChatHistory');
 router.post('/ask-ai', authMiddleware, async (req, res) => {
     try {
-      const { query, conversationId } = req.body;
+      const { query, conversationId, language } = req.body;
       const userId = req.user.userId;
   
       if (!query || !query.trim()) {
@@ -52,7 +52,7 @@ router.post('/ask-ai', authMiddleware, async (req, res) => {
         const aiServiceUrl = process.env.AI_SERVICE_URL || 'http://localhost:8000';
         const aiResponse = await axios.post(
           `${aiServiceUrl}/qa`,
-          new URLSearchParams({ query, context, top_k: 10 }),
+          new URLSearchParams({ language, query, context, top_k: 10 }),
           { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
         );
   

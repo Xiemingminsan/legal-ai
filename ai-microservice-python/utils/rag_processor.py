@@ -1,7 +1,9 @@
 # rag_system.py
 from enum import global_str
+import os
 from typing import List, Dict, Any, Optional, Tuple
 import numpy as np
+import requests
 import spacy
 from sentence_transformers import SentenceTransformer
 import faiss
@@ -26,6 +28,7 @@ class ChunkMetadata:
     original_text: str
     processed_text: str
     embedding_idx: int
+    language: str  # 'en' or 'am'
     special_matches: Dict[str, List[str]]
 
 class RAGProcessor:
@@ -36,6 +39,7 @@ class RAGProcessor:
     def __init__(
         self,
         embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2",
+        stemmer_api_url = os.getenv("STEMMER_API_URL", "http://localhost:5000/api/stemmer/stem"),
         batch_size: int = 32,
         cache_dir: Optional[str] = None,
         faiss_index: Optional[Any] = None
@@ -47,6 +51,7 @@ class RAGProcessor:
         # Initialize embedding model with caching
         self.embedding_model = self._initialize_embedding_model(embedding_model_name)
         self.embedding_dim = self.embedding_model.get_sentence_embedding_dimension()
+        self.stemmer_api_url = stemmer_api_url
         self.batch_size = batch_size
         
         # Initialize FAISS index
@@ -94,7 +99,7 @@ class RAGProcessor:
             self.bm25 = BM25Okapi([["placeholder"]])  # Fallback
 
 
-    async def process_document(self, doc_id: str, text: str) -> Dict[str, Any]:
+    async def process_document(self, doc_id: str, text: str, language: str) -> Dict[str, Any]:
         """Process a document asynchronously with smart chunking and parallel processing."""
         try:
             # Generate chunks with proper boundaries
@@ -102,7 +107,7 @@ class RAGProcessor:
             logger.info(f"Generated {len(chunks)} chunks for document {doc_id}")
 
             # Process chunks in parallel
-            chunk_data = await self._process_chunks(doc_id, chunks)
+            chunk_data = await self._process_chunks(doc_id, chunks, language)
             
             # Update search indices
             self._update_search_indices(chunk_data)
@@ -123,7 +128,8 @@ class RAGProcessor:
                         "original_text": chunk.original_text,
                         "processed_text": chunk.processed_text,
                         "embedding_idx": chunk.embedding_idx,
-                        "special_matches": chunk.special_matches
+                        "special_matches": chunk.special_matches,
+                        "language": chunk.language
                     }
                     for chunk in chunk_data
                 ]
@@ -133,7 +139,21 @@ class RAGProcessor:
             logger.error(f"Error processing document {doc_id}: {e}")
             raise
 
-        
+    def stem_text(self, text: str) -> str:
+        """
+        Directly call the stemmer API to stem the given text.
+        """
+        try:
+            response = requests.post(self.stemmer_api_url, json={"text": text})
+            response.raise_for_status()
+            data = response.json()
+            stemmed_text = data.get("stemmedText", "")
+            logger.info(f"Stemming successful")
+            return stemmed_text if stemmed_text else text
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error communicating with the stemmer API: {e}")
+            return text  # Fallback: return original text
+
     async def _generate_smart_chunks(self, text: str, max_chunk_size: int = 512) -> List[str]:
         """
         Generate chunks with intelligent boundary detection that keeps related content together.
@@ -208,12 +228,17 @@ class RAGProcessor:
     async def _process_chunks(
         self, 
         doc_id: str, 
-        chunks: List[str]
+        chunks: List[str], 
+        language: str = "en"
     ) -> List[ChunkMetadata]:
-        """Process chunks in parallel."""
-        async def process_chunk(chunk: str, chunk_id: int) -> ChunkMetadata:
-            # Clean and process text
-            processed_text = await self._clean_text(chunk)
+        """
+        Process chunks in parallel based on the specified language.
+        """
+        async def process_chunk(chunk: str, chunk_id: int, language: str = "en") -> ChunkMetadata:
+            if language == "amh":
+                processed_text = self.stem_text(chunk)
+            else:
+                processed_text = await self._clean_text(chunk)
             
             # Find special matches
             special_matches = {
@@ -227,14 +252,12 @@ class RAGProcessor:
                 original_text=chunk,
                 processed_text=processed_text,
                 embedding_idx=len(self.chunks_metadata) + chunk_id,
-                special_matches=special_matches
+                special_matches=special_matches,
+                language=language
             )
-
-        # Process all chunks in parallel
-        tasks = [
-            process_chunk(chunk, i) 
-            for i, chunk in enumerate(chunks)
-        ]
+        
+        # Pass the language parameter to process_chunk
+        tasks = [process_chunk(chunk, i, language) for i, chunk in enumerate(chunks)]
         return await asyncio.gather(*tasks)
 
     async def _clean_text(self, text: str) -> str:

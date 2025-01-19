@@ -8,6 +8,7 @@ function Dashboard() {
   const [file, setFile] = useState(null);
   const [category, setCategory] = useState('uncategorized'); // Default category
   const [docScope, setDocScope] = useState('public'); // Default scope
+  const[language, setLanguage] = useState('en');
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [processingStatus, setProcessingStatus] = useState(null);
@@ -50,6 +51,7 @@ function Dashboard() {
       formData.append('file', file);
       formData.append('category', category);
       formData.append('docScope', docScope);
+      formData.append('language', language); // Default language
       console.log('Inspecting FormData:');
       for (let [key, value] of formData.entries()) {
         console.log(`${key}:`, value);
@@ -202,6 +204,15 @@ function Dashboard() {
             <option value="private">Private</option>
             <option value="public">Public</option>
           </select>
+          <select
+            value={language}
+            onChange={(e) => setLanguage(e.target.value)}
+            style={styles.select}
+          >
+            <option value="en">English</option>
+            <option value="amh">Amharic</option>
+          </select>
+          
           <button
             type="submit"
             style={styles.button}
