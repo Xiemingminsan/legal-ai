@@ -594,6 +594,7 @@ async def upload_document(
         
         # Process the document with the RAG system
         logger.info("Processing document with RAG system...")
+        rag_system = AmharicRAG()
         result = rag_system.process_document(pdf_path, doc_id)
         
         # Return the result
@@ -619,6 +620,7 @@ async def ask_question(
     """Ask a question and get raw results with similarity scores."""
     try:
         # Call search_and_answer to get matches and scores
+        rag_system = AmharicRAG()
         result = await rag_system.search_and_answer(
             query=query,
             top_k=top_k,
