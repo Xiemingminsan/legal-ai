@@ -7,9 +7,7 @@
   --text-color: #fff;
 }
 
-html, body {
-  overflow: hidden; /* Prevents default scrolling on the page */
-}
+
 
 /* General Layout */
 .chat-page {

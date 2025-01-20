@@ -15,6 +15,7 @@ coverage/
 .idea/
 *.sublime-workspace
 *.sublime-project
+*.pdf
 
 # React Native
 # React Native specific

@@ -6,6 +6,9 @@ function Dashboard() {
   const [docs, setDocs] = useState([]);
   const [title, setTitle] = useState('');
   const [file, setFile] = useState(null);
+  const [category, setCategory] = useState('uncategorized'); // Default category
+  const [docScope, setDocScope] = useState('public'); // Default scope
+  const[language, setLanguage] = useState('en');
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [processingStatus, setProcessingStatus] = useState(null);
@@ -46,6 +49,14 @@ function Dashboard() {
       const formData = new FormData();
       formData.append('title', title);
       formData.append('file', file);
+      formData.append('category', category);
+      formData.append('docScope', docScope);
+      formData.append('language', language); // Default language
+      console.log('Inspecting FormData:');
+      for (let [key, value] of formData.entries()) {
+        console.log(`${key}:`, value);
+      }
+
 
       const response = await axios.post(
         'http://localhost:5000/api/documents/upload',
@@ -61,6 +72,7 @@ function Dashboard() {
           },
         }
       );
+
 
       const docId = response.data.doc._id;
       if (docId) {
@@ -173,6 +185,34 @@ function Dashboard() {
             style={styles.inputFile}
             required
           />
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            style={styles.select}
+          >
+            <option value="criminal">Criminal</option>
+            <option value="family">Family</option>
+            <option value="trade">Trade</option>
+            <option value="contract">Contract</option>
+            <option value="uncategorized">Uncategorized</option>
+          </select>
+          <select
+            value={docScope}
+            onChange={(e) => setDocScope(e.target.value)}
+            style={styles.select}
+          >
+            <option value="private">Private</option>
+            <option value="public">Public</option>
+          </select>
+          <select
+            value={language}
+            onChange={(e) => setLanguage(e.target.value)}
+            style={styles.select}
+          >
+            <option value="en">English</option>
+            <option value="amh">Amharic</option>
+          </select>
+          
           <button
             type="submit"
             style={styles.button}

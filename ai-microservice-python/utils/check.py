@@ -7,12 +7,15 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-load_dotenv(dotenv_path="../backend-node/.env")
+load_dotenv(dotenv_path="../../backend-node/.env")
+
+
 
 # AI configuration
 USE_LOCAL_LLM = os.getenv("USE_LOCAL_LLM", "false").lower() == "true"
 
 GEMINI_API_URL = os.getenv("GEMINI_API_URL")  # e.g., "https://api.mistral.ai/v1/chat/completions"
+print("okay",GEMINI_API_URL)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")  # if needed
 
 

@@ -1,479 +1,590 @@
+# main.py
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 import datetime
-import json
 import os
-import uvicorn
+import json
+import logging
+from pathlib import Path
+import re
+from typing import Any, List, Dict, Optional
+import traceback
+
+from jinja2 import BaseLoader
+from googletrans import Translator
+
+import requests
+
 import faiss
 import numpy as np
-import pdfplumber
-from dotenv import load_dotenv
-from fastapi import FastAPI, Form, HTTPException
+from fastapi import FastAPI, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, JSONResponse as jsonify
-from sentence_transformers import SentenceTransformer
+import uvicorn
+from nltk.tokenize import word_tokenize
+from dotenv import load_dotenv
+
+from utils.pdf_extractor import PDFExtractor
+from utils.amharic_rag import ConcurrentTranslator
+
+from utils.rag_processor import ChunkMetadata, RAGProcessor
+from utils.query_preprocessor import QueryPreprocessor
 from gemini_helper import call_gemini_api
 from summary import summarize_with_gemini
-from typing import Any, List, Dict
-from pathlib import Path
-import logging
-import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
 
+# Load environment variables
+load_dotenv()
 
-
-# Set up logging
+# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-load_dotenv()
+CACHE_DIR = Path("./cache")
+DOCUMENTS_STORE_PATH = CACHE_DIR / "documents_store.json"
+FAISS_INDEX_PATH = CACHE_DIR / "faiss_index_file.index"
+BM25_STORE_PATH = CACHE_DIR / "bm25_store.json"  # New path for BM25 data
+DIMENSION = 768    # for "all-MiniLM-L6-v2"
 
+CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+class GlobalState:
+    """Singleton class to manage global state"""
+    _instance = None
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance.initialize()
+        return cls._instance
+    
+    def initialize(self):
+        """Initialize or load the FAISS index, BM25, and documents store"""
+        self.documents_store = []
+        self.tokenized_texts = []
+        self.is_initialized = False
+        
+        # Initialize FAISS index first
+        try:
+            if FAISS_INDEX_PATH.exists():
+                self.faiss_index = faiss.read_index(str(FAISS_INDEX_PATH))
+                logger.info("Loaded existing FAISS index")
+            else:
+                self.faiss_index = faiss.IndexFlatIP(DIMENSION)
+                logger.info("Created new FAISS index")
+        except Exception as e:
+            logger.error(f"Error initializing FAISS index: {e}")
+            self.faiss_index = faiss.IndexFlatIP(DIMENSION)
+        
+        # Initialize RAG processor
+        self.rag_processor = RAGProcessor(
+            embedding_model_name="sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
+            batch_size=32,
+            cache_dir=str(CACHE_DIR),
+            faiss_index=self.faiss_index
+        )
+        
+        # Load documents store if exists
+        if DOCUMENTS_STORE_PATH.exists():
+            try:
+                with open(DOCUMENTS_STORE_PATH, 'r', encoding='utf-8') as f:
+                    self.documents_store = json.load(f)
+                logger.info(f"Loaded existing documents store with {len(self.documents_store)} documents")
+                
+                # Reconstruct chunks metadata from documents
+                self.chunks_metadata = []
+                for idx, doc in enumerate(self.documents_store):
+                    chunk_metadata = ChunkMetadata(
+                        doc_id=doc['doc_id'],
+                        chunk_id=idx,
+                        original_text=doc['text'],
+                        processed_text=self._clean_text_for_reload(doc['text']),
+                        embedding_idx=idx,
+                        special_matches=self._extract_special_matches(doc['text']),
+                        language=doc['language']
+                    )
+                    self.chunks_metadata.append(chunk_metadata)
+                
+                # Update RAG processor with loaded metadata
+                self.rag_processor.chunks_metadata = self.chunks_metadata
+                
+                # Initialize tokenized texts from processed text
+                self.tokenized_texts = [
+                    chunk_metadata.processed_text.split()
+                    for chunk_metadata in self.chunks_metadata
+                ]
+                
+                # Update RAG processor with tokenized texts
+                self.rag_processor.tokenized_texts = self.tokenized_texts
+                self.rag_processor.update_bm25(self.tokenized_texts)
+                
+            except Exception as e:
+                logger.error(f"Failed to load documents store: {e}")
+                self.documents_store = []
+                self.chunks_metadata = []
+                self.tokenized_texts = []
+        else:
+            self.chunks_metadata = []
+            self.rag_processor.update_bm25([["placeholder"]])
+        
+        if len(self.documents_store) != len(self.chunks_metadata):
+            logger.warning("State inconsistency detected during initialization. Rebuilding state...")
+            self.chunks_metadata = []
+            for doc in self.documents_store:
+                chunk_metadata = ChunkMetadata(
+                    doc_id=doc['doc_id'],
+                    chunk_id=len(self.chunks_metadata),
+                    original_text=doc['text'],
+                    processed_text=self._clean_text_for_reload(doc['text']),
+                    embedding_idx=len(self.chunks_metadata),
+                    special_matches=self._extract_special_matches(doc['text']),
+                    language=doc['language']
+                )
+                self.chunks_metadata.append(chunk_metadata)
+            
+        self.rag_processor.chunks_metadata = self.chunks_metadata
+        self.is_initialized = True
+        logger.info("System fully initialized with Document store, FAISS index, and BM25.")
+
+    async def save_state(self):
+        """Save the current state to disk"""
+        try:
+            if not self.is_initialized:
+                logger.warning("Attempted to save uninitialized state")
+                return
+
+            # Save FAISS index
+            faiss.write_index(self.faiss_index, str(FAISS_INDEX_PATH))
+            
+            # Save documents store
+            with open(DOCUMENTS_STORE_PATH, 'w', encoding='utf-8') as f:
+                json.dump(self.documents_store, f, ensure_ascii=False, indent=2)
+            
+            # Save BM25 data if available
+            if hasattr(self.rag_processor, 'tokenized_texts'):
+                bm25_data = {
+                    'tokenized_texts': self.rag_processor.tokenized_texts
+                }
+                with open(BM25_STORE_PATH, 'w', encoding='utf-8') as f:
+                    json.dump(bm25_data, f, ensure_ascii=False, indent=2)
+
+            logger.info(f"System state saved successfully with {len(self.documents_store)} documents")
+            logger.debug(f"Documents store contents: {self.documents_store}")
+            
+        except Exception as e:
+            logger.error(f"Error saving system state: {e}")
+            raise
+
+    
+    def _clean_text_for_reload(self, text: str) -> str:
+        """Clean text using same logic as RAGProcessor."""
+        # Simplified version of RAGProcessor's _clean_text_sync
+        text = text.lower()
+        text = re.sub(r'\s+', ' ', text)
+        return text.strip()
+
+    def _extract_special_matches(self, text: str) -> Dict[str, List[str]]:
+        """Extract special matches using same patterns as RAGProcessor."""
+        patterns = {
+            "article_ref": re.compile(r'article\s+\d+(\.\d+)*'),
+            "section_ref": re.compile(r'section\s+\d+(\.\d+)*'),
+            "legal_refs": re.compile(r'(?:pursuant to|in accordance with|subject to)'),
+            "definitions": re.compile(r'(?:means|refers to|is defined as)')
+        }
+        
+        return {
+            name: pattern.findall(text)
+            for name, pattern in patterns.items()
+        }
+
+    def clear_and_reset_state(self):
+        """Clear and reset the system state."""
+        try:
+            # Reset FAISS index
+            self.faiss_index = faiss.IndexFlatIP(DIMENSION)
+
+            # Clear document storage
+            self.documents_store = []
+
+            # Reset RAG processor
+            self.rag_processor.chunks_metadata = []
+            self.rag_processor.tokenized_texts = []
+            self.rag_processor.update_index(self.faiss_index)
+            self.rag_processor.update_bm25([["placeholder"]])
+
+            # Remove stored files
+            for path in [DOCUMENTS_STORE_PATH, FAISS_INDEX_PATH, BM25_STORE_PATH]:
+                if path.exists():
+                    path.unlink()
+
+            logger.info("System state cleared and reset successfully")
+            
+            # Save the empty state
+            asyncio.create_task(self.save_state())
+            
+        except Exception as e:
+            logger.error(f"Error clearing system state: {e}")
+            raise
+
+# Initialize FastAPI
 app = FastAPI()
+global_state = GlobalState()
 
-# Add CORS middleware
+# CORS Middleware configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:5000", "http://localhost:8000"],  # Corrected CORS origins
+    allow_origins=["http://localhost:5173", "http://localhost:5000", "http://localhost:8000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-FAISS_INDEX_PATH = "faiss_index_file.index"
-DOCUMENTS_STORE_PATH = "documents_store.json"
-# Initialize model and index
-EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
-embedding_model = SentenceTransformer(EMBEDDING_MODEL_NAME)
-dimension = 384
-faiss_index = faiss.IndexFlatIP(dimension)
-documents_store = []
+@app.get("/health")
+async def health_check():
+    return {
+        "status": "healthy" if global_state.is_initialized else "initializing",
+        "documents_count": len(global_state.documents_store),
+        "chunks_count": len(global_state.rag_processor.chunks_metadata),
+        "faiss_size": global_state.faiss_index.ntotal,
+        "tokenized_texts": len(global_state.tokenized_texts)
+    }
 
-# Constants
-CHUNK_SIZE = 200
-BATCH_SIZE = 10  # Number of chunks to embed at once
-load_dotenv(dotenv_path="../backend-node/.env")
+@app.get("/faiss/index")
+async def get_faiss_index_info():
+    index = global_state.faiss_index
+    return {
+        "faiss_index": {
+            "dimension": index.d,
+            "number_of_vectors": index.ntotal,
+            "metric": index.metric_type
+        }
+    }
 
-# AI configuration
-USE_LOCAL_LLM = os.getenv("USE_LOCAL_LLM", "false").lower() == "true"
-
-GEMINI_API_URL = os.getenv("GEMINI_API_URL")  # e.g., "https://api.mistral.ai/v1/chat/completions"
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")  # if needed
-if USE_LOCAL_LLM:
-    logger.info("Using local LLM")
-    # Load local Mistral LLM
-    MISTRAL_MODELS_PATH = Path.home().joinpath('mistral_models', '7B-Instruct-v0.3')
-    tokenizer = AutoTokenizer.from_pretrained(MISTRAL_MODELS_PATH)
-    model = AutoModelForCausalLM.from_pretrained(
-        "mistralai/Mistral-7B-Instruct-v0.3",
-        trust_remote_code=True,
-        device_map="auto",
-        torch_dtype=torch.bfloat16
-    )
-else:
-    logger.info("Using online LLM via Mistral API")
-
-class DocumentProcessor:
-    @staticmethod
-    def extract_text_from_pdf(pdf_path: str) -> str:
-        try:
-            text = ""
-            with pdfplumber.open(pdf_path) as pdf:
-                for page in pdf.pages:
-                    if page_text := page.extract_text():
-                        text += page_text + "\n"
-            return text
-        except Exception as e:
-            logger.error(f"Error extracting text from PDF: {e}")
-            raise HTTPException(status_code=400, detail="Failed to extract text from PDF")
-
-    @staticmethod
-    def chunk_text(text: str) -> List[str]:
-        """Smart text chunking with overlap"""
-        words = text.split()
-        chunks = []
-        overlap = 50  # Words of overlap between chunks
-
-        for i in range(0, len(words), CHUNK_SIZE - overlap):
-            chunk = words[i:i + CHUNK_SIZE]
-            if chunk:
-                chunks.append(" ".join(chunk))
-        return chunks
-
-    @staticmethod
-    def batch_embed(chunks: List[str]) -> np.ndarray:
-        """Embed chunks in batches to manage memory"""
-        all_embeddings = []
-
-        for i in range(0, len(chunks), BATCH_SIZE):
-            batch = chunks[i:i + BATCH_SIZE]
-            embeddings = embedding_model.encode(batch, convert_to_numpy=True)
-            faiss.normalize_L2(embeddings)
-            all_embeddings.append(embeddings)
-            
-        return np.vstack(all_embeddings)
-
-# Modified initialization code
-def initialize_faiss():
-    global faiss_index, documents_store
-    
-    # Initialize with default values
-    dimension = 384
-    faiss_index = None
-    documents_store = []
-    
+@app.get("/faiss/documents")
+async def list_faiss_documents():
     try:
-        # Try to load existing index
-        if os.path.exists(FAISS_INDEX_PATH):
-            faiss_index = faiss.read_index(FAISS_INDEX_PATH)
-            logger.info("Loaded existing FAISS index")
-        else:
-            faiss_index = faiss.IndexFlatIP(dimension)
-            logger.info("Created new FAISS index")
-            
-        # Try to load existing documents store
-        if os.path.exists(DOCUMENTS_STORE_PATH):
-            with open(DOCUMENTS_STORE_PATH, 'r', encoding='utf-8') as f:
-                documents_store = json.load(f)
-            logger.info("Loaded existing documents store")
-        else:
-            documents_store = []
-            logger.info("Created new documents store")
-            
+        return {"documents": global_state.documents_store}
     except Exception as e:
-        logger.error(f"Error initializing FAISS: {e}")
-        faiss_index = faiss.IndexFlatIP(dimension)
-        documents_store = []
-    
-    return faiss_index, documents_store
+        raise HTTPException(status_code=500, detail=str(e))
 
-# Function to save the current state
-def save_faiss_state():
+@app.delete("/faiss/clear")
+async def clear_faiss_index():
     try:
-        # Save FAISS index
-        faiss.write_index(faiss_index, FAISS_INDEX_PATH)
-        
-        # Save documents store
-        with open(DOCUMENTS_STORE_PATH, 'w', encoding='utf-8') as f:
-            json.dump(documents_store, f, ensure_ascii=False, indent=2)
-            
-        logger.info("FAISS state saved successfully")
+        global_state.clear_and_reset_state()  # Remove await here
+        await global_state.save_state()
+
+        return {"status": "success", "message": "FAISS index and documents cleared"}
     except Exception as e:
-        logger.error(f"Error saving FAISS state: {e}")
+        logger.error(f"Error clearing FAISS index: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize system state on startup."""
+    logger.info("Application starting up with initialized global state")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Save state on shutdown."""
+    await global_state.save_state()
 
 @app.post("/embed_document")
-async def embed_document(doc_id: str = Form(...), pdf_path: str = Form(...)):
+async def embed_document(
+    doc_id: str = Form(...),
+    pdf_path: str = Form(...),
+    doc_scope: str = Form(...),
+    category: str = Form(...),
+    language: Optional[str] = Form("en")
+) -> Dict[str, Any]:
     try:
-        print(f"Processing document {doc_id}")
-        print(f"PDF path: {pdf_path}")
-        logger.info(f"Processing document {doc_id}")
-        
-        # Validate PDF path
-        if not os.path.exists(pdf_path):
-            raise HTTPException(status_code=400, detail="PDF file not found")
-            
-        # Extract text
-        raw_text = DocumentProcessor.extract_text_from_pdf(pdf_path)
-        if not raw_text.strip():
+        logger.info(f"Processing doc_id={doc_id}, pdf_path={pdf_path}")
+
+        # Extract text from PDF
+        text = PDFExtractor.extract_content(pdf_path)
+        if not text:
             raise HTTPException(status_code=400, detail="No text extracted from PDF")
-            
-        # Process chunks
-        chunks = DocumentProcessor.chunk_text(raw_text)
-        if not chunks:
-            raise HTTPException(status_code=400, detail="No chunks generated")
-            
-        # Generate embeddings
-        embeddings = DocumentProcessor.batch_embed(chunks)
+
+        # Process document with RAG system
+        result = await global_state.rag_processor.process_document(doc_id, text,language)
         
-        # Update FAISS index
-        faiss_index.add(embeddings)
-        
-        # Store metadata
-        start_idx = len(documents_store)
+        # Update documents store with new entries
         current_time = datetime.datetime.utcnow().isoformat()
-        
-        # Get filename from path to use as title if needed
         filename = os.path.basename(pdf_path)
         
-        for chunk in chunks:
-            documents_store.append({
+        # Remove any existing entries for this doc_id
+        global_state.documents_store = [
+            doc for doc in global_state.documents_store 
+            if doc["doc_id"] != doc_id
+        ]
+
+        # Add new entries from the processed chunks
+        for chunk_data in result["chunk_data"]:
+            doc_entry = {
                 "doc_id": doc_id,
                 "title": filename,
-                "text": chunk,
-                "index": start_idx + len(documents_store),
+                "text": chunk_data["original_text"],
+                "index": len(global_state.documents_store),
                 "uploadDate": current_time,
+                "docScope": doc_scope,
+                "category": category,
+                "language": language,
                 "status": "completed"
-            })
+            }
+            global_state.documents_store.append(doc_entry)
 
-        save_faiss_state() 
+        # Save state immediately
+        await global_state.save_state()
+
+        logger.info(f"Successfully processed document {doc_id} with {len(result['chunk_data'])} chunks")
+        
         return {
             "status": "success",
-            "chunks_added": len(chunks),
-            "total_chunks": len(documents_store)
+            "doc_id": doc_id,
+            "chunks_added": result["num_chunks"],
+            "stats": result["metadata"]
         }
-        
+
     except Exception as e:
-        logger.error(f"Error processing document: {e}")
+        logger.error(f"Error embedding document: {e}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/documents/{doc_id}/status")
 async def get_document_status(doc_id: str):
     try:
-        # Find all chunks for this document
-        doc_chunks = [doc for doc in documents_store if doc["doc_id"] == doc_id]
-        
+        doc_chunks = [doc for doc in global_state.documents_store if doc["doc_id"] == doc_id]
         if not doc_chunks:
-            return {
-                "status": "not_found",
-                "progress": 0
-            }
-            
-        # Return the status of the document
-        return {
-            "status": doc_chunks[0].get("status", "processing"),
-            "progress": 100 if doc_chunks[0].get("status") == "completed" else 0
-        }
-        
+            return {"status": "not_found", "progress": 0}
+
+        # Assume the first chunk's status is representative
+        status = doc_chunks[0].get("status", "processing")
+        progress = 100 if status == "completed" else 0
+        return {"status": status, "progress": progress}
+
     except Exception as e:
         logger.error(f"Error getting document status: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-        
-@app.post("/search")
-async def search_similar_chunks(query: str = Form(...), top_k: int = Form(3)):
-    try:
-        if not documents_store:
-            print("documents_store", documents_store)
-            return {"results": []}
-        
-        # Ensure FAISS index is loaded
-        try:
-            faiss_index = faiss.read_index("faiss_index_file.index")
-        except Exception as e:
-            logger.error(f"FAISS index loading error: {e}")
-            return {"results": []}
 
-        # 1. Semantic Search
-        query_embedding = embedding_model.encode([query], convert_to_numpy=True)
-        faiss.normalize_L2(query_embedding)
-        distances, indices = faiss_index.search(query_embedding, len(documents_store))  # Get all results initially
+@app.post("/search")
+async def search_similar_chunks(
+    query: str = Form(...),
+    top_k: int = Form(3),
+    semantic_weight: float = Form(0.7),
+    language: Optional[str] = Form("en")
+) -> Dict[str, Any]:
+    """
+    Hybrid search endpoint using the new RAG system.
+    
+    Args:
+        query: Search query text
+        top_k: Number of results to return
+        semantic_weight: Weight for semantic search vs lexical search (0-1)
+    """
+    try:
+        if not global_state.is_initialized:
+            logger.warning("Search attempted before system initialization")
+            return {"results": [], "status": "system_initializing"}
+            
+        if not global_state.rag_processor.chunks_metadata:
+            logger.warning("Search attempted with empty chunks metadata")
+            return {"results": [], "status": "no_documents"}
+        if not global_state.documents_store or global_state.rag_processor.index.ntotal == 0:
+            return {"results": []}
         
-        # 2. Keyword matching
-        query_terms = set(query.lower().split())
-        
-        # 3. Combine results with hybrid scoring
-        hybrid_results = []
-        for idx, semantic_score in zip(indices[0], distances[0]):
-            if idx != -1:  # Valid index
-                doc = documents_store[idx]
-                text = doc["text"].lower()
-                
-                # Calculate exact match score
-                exact_match_score = 0
-                for term in query_terms:
-                    if term in text:
-                        exact_match_score += 1
-                
-                # Normalize exact match score
-                exact_match_score = exact_match_score / len(query_terms)
-                
-                # Calculate final score (weighted combination)
-                # Adjust these weights to balance semantic vs exact matching
-                semantic_weight = 0.6
-                exact_weight = 0.4
-                final_score = (semantic_weight * float(semantic_score)) + (exact_weight * exact_match_score)
-                
-                # Boost score significantly if the exact query appears in the text
-                if query.lower() in text:
-                    final_score *= 1.5
-                
-                hybrid_results.append({
-                    "doc_id": doc["doc_id"],
-                    "text": doc["text"],
-                    "similarity": final_score,
-                    "semantic_score": float(semantic_score),
-                    "exact_match_score": exact_match_score
+        # Perform hybrid search
+        if language == "en":
+            ab=QueryPreprocessor()
+            query = ab.preprocess_query(query)
+            print("eng",query)
+        else:
+            query = global_state.rag_processor.stem_text(query)
+            print("amh",query)
+
+        # Process document with RAG system
+        raw_results = await global_state.rag_processor.search(
+            query=query,
+            top_k=top_k,
+            semantic_weight=semantic_weight
+        )
+
+        # Format results with document metadata
+        formatted_results = []
+        for result in raw_results:
+            # Find corresponding document store entry
+            doc_entry = next(
+                (doc for doc in global_state.documents_store 
+                 if doc["doc_id"] == result["doc_id"] and 
+                 doc["text"] == result["text"]),
+                None
+            )
+            
+            if doc_entry:
+                formatted_results.append({
+                    "doc_id": result["doc_id"],
+                    "text": result["text"],
+                    "similarity": result["score"],
+                    "title": doc_entry.get("title", ""),
+                    "docScope": doc_entry.get("docScope", ""),
+                    "category": doc_entry.get("category", ""),
+                    "uploadDate": doc_entry.get("uploadDate", ""),
+                    "special_matches": result["special_matches"]
                 })
-        
-        # Sort by final score and take top_k results
-        hybrid_results.sort(key=lambda x: x["similarity"], reverse=True)
-        top_results = hybrid_results[:top_k]
-        
-        return {"results": top_results}
-        
+
+        return {
+            "results": formatted_results,
+            "query_processed": query
+        }
+
     except Exception as e:
         logger.error(f"Search error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/qa")
-async def rag_qa(query: str = Form(...),context: str = Form(...), top_k: int = Form(3)):
+
+translator = ConcurrentTranslator()
+
+async def translate_to_english(text: str) -> str:
+    """Helper function to translate text to English"""
+    if not text:
+        return ""
     try:
-        # Step 1: Retrieve similar chunks
-        retrieval_res = await search_similar_chunks(query, top_k)
+        result = await translator.translate_text(text, src='am', dest='en')
+        return result if result else text
+    except Exception as e:
+        logger.error(f"Translation to English failed: {str(e)}")
+        return text
+
+@app.post("/translateE")
+def translate_english_to_amharic(text):
+    api_key = "AIzaSyAERzMwtZUi2ufsJhyeP1tNESr4k_02PSo"
+    base_url = "https://translation.googleapis.com/language/translate/v2"
+    
+    params = {
+        'q': text,
+        'target': 'am',
+        'source': 'en',
+        'key': api_key
+    }
+    
+    response = requests.get(base_url, params=params)
+    
+    if response.status_code == 200:
+        result = response.json()
+        translated_text = result['data']['translations'][0]['translatedText']
+        return translated_text
+    else:
+        return f"Error: {response.status_code}"
+
+@app.post("/qa")
+async def rag_qa(query: str = Form(...), context: str = Form(...), top_k: int = Form(3), language: Optional[str] = Form("en")):
+    try:
+        semantic_weight=0.7
+        retrieval_res = await search_similar_chunks(query, top_k,semantic_weight)
+        
         chunks = retrieval_res.get("results", [])
-
         if not chunks:
-            return {
-                "answer": "No documents in the index yet.",
-                "chunksUsed": []
-            }
+            return {"answer": "No documents found or no index built.", "chunksUsed": []}
 
-        # Step 2: Build context string
-        context_texts = [context]
-        for c in chunks:
-            context_texts.append(f"Chunk from doc {c['doc_id']}:\n{c['text']}\n")
+        context_texts = [context] + [f"Chunk from doc {c['doc_id']}:\n{c['text']}" for c in chunks]
         context_str = "\n\n".join(context_texts)
+        index = 0
 
-        # Step 3: Create the payload for the Gemini API
+                
+        if language != "en":
+            index = 1
+            query = await translate_to_english(query)
+            print("translated_query",query)
+            context_str = await translate_to_english(context_str)
+            print("translated_context",context_str)
+
         payload = {
-            "contents": [{
-                "parts": [
-                    {
-                        "text": (
-                            f"You are a helpful assistant in the realm of Ethiopian Legal Law and System. Here is the relevant context:\n\n"
-                            f"here is the last 5 message plus the summary of our conversation: {context_str}\n\n"
-                            f"User question: {query}\n\n"
-                            f"INSTRUCTIONS:\n"
-                            f"1. If the question is a general greeting or about your capabilities, respond naturally and conversationally. Never reference the context.\n"
-                            f"2. For all other questions:\n"
-                            f"   - ONLY use the information explicitly stated in the provided context.\n"
-                            f"   - If the context does not provide sufficient information to answer the question, respond with: \"Based on the provided context, I cannot answer this question.\"\n"
-                            f"   - Do not include any external knowledge or assumptions.\n"
-                            f"   - Keep answers concise and factual.\n"
-                            f"   - If you quote from the context, use exact quotes.\n\n"
-                            f"Answer:"
-                        )
-                    }
-                ]
-            }]
-        }
+    "contents": [{
+        "parts": [
+            {
+                "text": (
+                    f"You are a highly contextual assistant designed to answer questions based on provided information only. "
+                    f"Follow these rules when answering user queries:\n\n"
 
+                    f"1. Always prioritize context in the following order:\n"
+                    f"   - Relevant chunks retrieved from the database or knowledge base.\n"
+                    f"   - The last 7 messages for conversational relevance.\n"
+                    f"   - The conversation summary for broader context.\n\n"
+
+                    f"2. For follow-up questions:\n"
+                    f"   - Check the last 7 messages and chunks to identify what the user is referring to.\n"
+                    f"   - If no clarity is found in the last 5 messages, check the conversation summary.\n\n"
+
+                    f"3. NEVER answer based solely on your own knowledge. Only use the context provided in chunks, messages, or summary.\n\n"
+
+                    f"4. If the context is insufficient:\n"
+                    f"   - Ask the user to clarify or rephrase their query politely.\n\n"
+
+                    f"5. Your responses must be:\n"
+                    f"   - Concise and factual.\n"
+                    f"   - Based explicitly on the context provided.\n"
+                    f"   - Polite and professional.\n\n"
+
+                    f"EXAMPLES:\n"
+                    f"- If the query is ambiguous:\n"
+                    f"  * User: 'What was I asking about?'\n"
+                    f"  * Response: 'Based on our conversations, you were discussing [topic]. Can you clarify further?'\n\n"
+
+                    f"- If the query requires more detail:\n"
+                    f"  * User: 'Explain More.'\n"
+                    f"  * Response: 'Based on our conversation, Article 637 discusses [key points from the context]. Let me know if you'd like a more detailed explanation.'\n\n"
+
+                    f"- If the query is outside the provided context:\n"
+                    f"  * User: 'Tell me about physics.'\n"
+                    f"  * Response: 'Based on the provided context, I cannot answer this question. Can you provide more details or rephrase?'\n\n"
+
+                    f"Begin by answering the following query:\n\n"
+                    f"Here is the relevant context:\n\n{context_str}\n\n"
+                    f"User question: {query}\n\n"
+                    f"Answer:"
+                )
+            }
+        ]
+    }]
+}
         result, error = call_gemini_api(payload)
         if error:
-            logger.error(error)
+            logger.error(f"Gemini error: {error}")
             return {"answer": error, "chunksUsed": chunks}
+        
+        if index == 1:
+            result["answer"] = translate_english_to_amharic(result["answer"])
 
         return {
             "answer": result["answer"],
             "chunksUsed": chunks,
-            "geminiMetadata": result["geminiMetadata"]
+            "geminiMetadata": result.get("geminiMetadata", {})
         }
 
     except Exception as e:
         logger.error(f"QA error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/faiss/index")
-async def get_faiss_index():
-    try:
-        global faiss_index
-        if faiss_index is None:
-            raise HTTPException(status_code=404, detail="FAISS index not found")
-
-        index_info = {
-            "dimension": faiss_index.d,
-            "number_of_vectors": faiss_index.ntotal,
-            "metric": faiss_index.metric_type,  # e.g., faiss.METRIC_L2
-            # Add more details as needed
-        }
-
-        return {"faiss_index": index_info}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/faiss/documents")
-async def list_faiss_documents() -> Dict[str, List[Dict[str, Any]]]:
-    try:
-        documents = []
-        # Assuming faiss_index and documents_store are properly initialized
-        for idx in range(faiss_index.ntotal):
-            doc_metadata = documents_store[idx]
-            
-            # Create document entry without embedding by default
-            document = {
-                "index": idx,
-                "doc_id": doc_metadata["doc_id"],
-                "title": doc_metadata["title"],
-                "uploadDate": doc_metadata["uploadDate"],
-                "text": doc_metadata["text"]
-            }
-            documents.append(document)
-            
-        return {"documents": documents}
-        
-    except KeyError as e:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Missing required metadata field: {str(e)}"
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Internal server error: {str(e)}"
-        )
-
-@app.delete("/faiss/clear")
-async def clear_faiss_index():
-    global faiss_index, documents_store
-    try:
-        # Reset the FAISS index
-        dimension = faiss_index.d
-        faiss_index = faiss.IndexFlatIP(dimension)
-        
-        # Clear the document store
-        documents_store.clear()
-        
-        # Save the cleared state
-        save_faiss_state()
-
-        return {
-            "status": "success",
-            "message": "FAISS index and documents cleared"
-        }
-    except Exception as e:
-        logger.error(f"Error clearing FAISS index: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
 @app.post("/summarize")
 async def summarize(conversationText: str = Form(...)):
-    """
-    Endpoint to summarize a conversation.
-    Expects conversationText as form-encoded input.
-    """
     try:
-        # Call the summarize function
         summary = summarize_with_gemini(conversationText)
         if not summary:
             raise HTTPException(status_code=500, detail="Failed to summarize the conversation.")
-
-        # Return the summary
         return {"summary": summary}
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# In main.py (Python)
 @app.post("/summarize_doc")
 def summarize_doc(doc_params: Dict[str, Any]):
-    """
-    Summarize or extract key points from a doc's chunks.
-    doc_params: { "docId": str, "mode": "summary" | "keypoints" }
-    """
     doc_id = doc_params.get("docId")
-    mode =  "summary"
+    mode = doc_params.get("mode", "summary")
 
-    # 1. Gather all chunks for doc_id
-    relevant_chunks = [d for d in documents_store if d["doc_id"] == doc_id]
+    relevant_chunks = [d for d in global_state.documents_store if d["doc_id"] == doc_id]
     if not relevant_chunks:
         return {"error": "No chunks found for this documentId."}
 
-    # 2. Combine text
-    combined_text = "\n".join([rc["text"] for rc in relevant_chunks])
-    
-    # 3. Prepare prompt
+    combined_text = "\n".join(rc["text"] for rc in relevant_chunks)
     if mode == "summary":
         prompt = f"Summarize the following text:\n\n{combined_text}\n\nSummary:"
     else:
-        # e.g. "keypoints" or "analysis"
-        prompt = f"Extract the key points from the following text in bullet form:\n\n{combined_text}\n\nKey Points:"
+        prompt = f"Extract key points from this text in bullet form:\n\n{combined_text}\n\nKey Points:"
 
-    # 4. Call Gemini or local LLM
     payload = {
         "contents": [
             {
@@ -484,34 +595,45 @@ def summarize_doc(doc_params: Dict[str, Any]):
     result, error = call_gemini_api(payload)
     if error:
         return {"error": error}
+    return {"summary": result["answer"]}
 
-    # 5. Return the result
-    summary_text = result["answer"]  # adapt to your gemini structure
-    return {"summary": summary_text}
+@app.post("/classify_doc")
+def classify_doc(doc_params: Dict[str, Any]):
+    doc_id = doc_params.get("docId")
+    if not doc_id:
+        return {"error": "No docId provided"}
 
+    relevant_chunks = [d for d in global_state.documents_store if d["doc_id"] == doc_id]
+    if not relevant_chunks:
+        return {"error": "No chunks found for this docId"}
 
-@app.on_event("startup")
-async def startup_event():
-    global faiss_index, documents_store
-    faiss_index, documents_store = initialize_faiss()
+    combined_text = "\n".join([rc["text"] for rc in relevant_chunks])
+    categories = ["Family Law", "Contract Law", "Trade Law", "Criminal Law", "Other"]
+    cat_str = ", ".join(categories)
+
+    prompt = (
+        f"Classify the following text into one of these categories: {cat_str}.\n\n"
+        f"Text:\n{combined_text}\n\n"
+        f"Answer with only one category name:\nCategory:"
+    )
+
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}]
+    }
+    result, error = call_gemini_api(payload)
+    if error:
+        return {"error": error}
+
+    classification = result["answer"].strip()
+    if classification not in categories:
+        classification = "Other"
+
+    return {"classification": classification}
+
 
 @app.get("/")
 def read_root():
-    return {"message": "Welcome to the Legal AI Microservice!"}
+    return {"message": "Welcome to the Modularized RAG Microservice!"}
 
 if __name__ == "__main__":
-    # # Load FAISS index and documents_ store from disk if exists
-    # INDEX_PATH = Path('faiss_index/index.faiss')
-    # METADATA_PATH = Path('faiss_index/documents_store.json')
-
-    # if INDEX_PATH.exists() and METADATA_PATH.exists():
-    #     faiss_index = faiss.read_index(str(INDEX_PATH))
-    #     with open(METADATA_PATH, 'r') as f:
-    #         documents_store = json.load(f)
-    #     logger.info("FAISS index and documents_store loaded from disk.")
-    # else:
-    #     faiss_index = faiss.IndexFlatIP(dimension)
-    #     documents_store = []
-    #     logger.info("Initialized new FAISS index and documents_store.")
-
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
