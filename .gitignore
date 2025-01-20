@@ -93,3 +93,78 @@ poetry.lock
 *.DS_Store
 Thumbs.db
 desktop.ini
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Logs
+front-end-vue/logs
+front-end-vue/*.log
+front-end-vue/npm-debug.log*
+front-end-vue/yarn-debug.log*
+front-end-vue/yarn-error.log*
+
+# Dependency directories
+front-end-vue/node_modules/
+
+# Production build output
+front-end-vue/dist/
+front-end-vue/build/
+
+# Static files cache (e.g. Vite)
+front-end-vue/.vite
+front-end-vue/.cache
+
+# Optional eslint cache
+front-end-vue/.eslintcache
+
+# Optional Stylelint cache
+front-end-vue/.stylelintcache
+
+# Local environment settings
+front-end-vue/.env
+front-end-vue/.env.local
+front-end-vue/.env.*.local
+
+# Editor directories and files
+front-end-vue/.idea/
+front-end-vue/.vscode/
+front-end-vue/*.sublime-workspace
+
+# macOS
+front-end-vue/.DS_Store
+
+# Windows
+front-end-vue/Thumbs.db
+front-end-vue/ehthumbs.db
+
+# Linux
+front-end-vue/*.swp
+front-end-vue/.lock
+front-end-vue/.pnp
+front-end-vue/.pnp.js
+
+# Test output
+front-end-vue/coverage/
+front-end-vue/.nyc_output/
+
+# Debug files
+front-end-vue/Debug/
+front-end-vue/debug.log
+
+# IDE-specific
+front-end-vue/.idea/
+front-end-vue/.vscode/
