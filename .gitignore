@@ -52,7 +52,6 @@ ios/fastlane/test_output/
 *.wt.*
 *.turtle
 *.bson
-*.json
 data/
 dump/
 
