@@ -58,6 +58,11 @@ export default class MyHttpService {
         return { error: 'Session expired. Please log in again.' }
       }
 
+      if (response.status >= 400 && response.status <= 409) {
+        const data = await response.json()
+        return { error: data.msg || 'Bad Request' }
+      }
+
       if (response.status === 500) {
         return { error: 'Server Internal Error' }
       }
@@ -65,11 +70,6 @@ export default class MyHttpService {
       // Parse and return JSON for successful responses
       if (response.ok) {
         return response.json()
-      }
-
-      if (response.status === 400) {
-        const data = await response.json()
-        return { error: data.msg || 'Bad Request' }
       }
 
       return { error: `Unexpected Error: ${response.status}` }

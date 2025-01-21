@@ -65,6 +65,40 @@ export const useAuthStore = defineStore('auth', () => {
     clearUser()
   }
 
+  async function getMyAccount() {
+    try {
+      const response = await MyHttpService.get('/auth/getMyAccount', { useJWT: true })
+      // If response contains error, return that immediately
+      if (response.error) {
+        return { error: response.error || 'Error Fetching Account' }
+      }
+
+      return response
+    } catch (err) {
+      console.error(err)
+      return { error: 'Internal Error Fetching Account' }
+    }
+  }
+
+  async function changePassword(payload) {
+    try {
+      const response = await MyHttpService.post('/auth/changePassword', {
+        body: payload,
+        useJWT: true,
+      })
+      // If response contains error, return that immediately
+      if (response.error) {
+        return { error: response.error || 'Changing Password Failed' }
+      }
+
+      return response
+    } catch (err) {
+      console.error(err) // Log the error in the console
+
+      return { error: 'Internal Error Changing Password' }
+    }
+  }
+
   return {
     token,
     isAuthenticated,
@@ -73,5 +107,7 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     signUp,
     logout,
+    getMyAccount,
+    changePassword,
   }
 })

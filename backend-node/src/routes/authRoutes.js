@@ -1,6 +1,7 @@
 const express = require("express");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const authMiddleware = require("../middlewares/authMiddleware");
 const User = require("../models/User");
 
 const router = express.Router();
@@ -15,8 +16,8 @@ router.post("/signup", async (req, res) => {
       ethiopianLawKnowledge,
       legalProcessUnderstanding,
       legalTerminologyComfort,
+      fullname,
     } = req.body;
-
 
     console.log(req.body);
     // Validate input
@@ -61,6 +62,7 @@ router.post("/signup", async (req, res) => {
       ethiopianLawKnowledge,
       legalProcessUnderstanding,
       legalTerminologyComfort,
+      fullname,
     });
     await newUser.save();
 
@@ -105,6 +107,63 @@ router.post("/login", async (req, res) => {
     res.json({ token, username: user.username, role: user.role });
   } catch (err) {
     console.error("Error during login:", err);
+    res.status(500).json({ msg: "Server error" });
+  }
+});
+
+router.get("/getMyAccount", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.userId; // Extract the user ID from the authenticated user
+
+    // Find the user in the database by userId
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
+
+    // Respond with user data (excluding sensitive data like password)
+    res.json({
+      user,
+    });
+  } catch (err) {
+    console.error("Error during getMyAccount:", err);
+    res.status(500).json({ msg: "Server error" });
+  }
+});
+
+router.post("/changePassword", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { oldPassword, newPassword } = req.body; // Extract old and new password from the request body
+
+    // Validate input
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({ msg: "Both old and new password are required" });
+    }
+
+    // Find the user in the database
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
+
+    // Compare old password with the stored password hash
+    const isMatch = await bcrypt.compare(oldPassword, user.passwordHash);
+    if (!isMatch) {
+      return res.status(400).json({ msg: "Current password is incorrect" });
+    }
+
+    // Hash the new password
+    const salt = await bcrypt.genSalt(10);
+    const newPasswordHash = await bcrypt.hash(newPassword, salt);
+
+    // Update the user's password
+    user.passwordHash = newPasswordHash;
+    await user.save();
+
+    res.json({ msg: "Password changed successfully" });
+  } catch (err) {
+    console.error("Error during password change:", err);
     res.status(500).json({ msg: "Server error" });
   }
 });
