@@ -8,19 +8,19 @@
           </div>
           <div class="hidden md:block text-md">
             <div class="ml-10 flex items-baseline space-x-4 font-light text-md">
-              <router-link :to="`/land#services`"
+              <router-link :to="`#services`"
                 class="text-gray-800 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 px-3 py-2 rounded-md ">Our
                 Services</router-link>
-              <router-link :to="`/land#services`"
+              <router-link :to="`about`"
                 class="text-gray-800 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 px-3 py-2 rounded-md ">About</router-link>
-              <router-link :to="`/land#services`"
+              <router-link :to="`#contact`"
                 class="text-gray-800 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 px-3 py-2 rounded-md ">Contact</router-link>
             </div>
           </div>
         </div>
         <div class="hidden md:block">
           <DarkModeToggle />
-          <router-link to="/signIn"
+          <router-link to="/SignIn"
             class="ml-20 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium">
             Login
           </router-link>
@@ -54,7 +54,7 @@
       </div>
       <div class="pt-4 pb-3 border-t border-gray-200 dark:border-gray-700">
         <div class="flex items-center px-5">
-          <router-link to="/signIn"
+          <router-link to="/SignIn"
             class="mr-10 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium">
             Login
           </router-link>
