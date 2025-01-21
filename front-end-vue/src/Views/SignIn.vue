@@ -10,7 +10,7 @@
         <img src="/logo.png" alt="Legal Bot Ethio AI Logo" class="h-20">
       </div>
       <h2 class="text-2xl font-bold text-center mb-6 text-gray-800 dark:text-white">Sign In</h2>
-      <form @submit.prevent="handleSubmit">
+      <form @submit.prevent="handleLogin">
         <div class="mb-4">
           <label for="usernameOrEmail" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Username
             or Email</label>
@@ -34,11 +34,14 @@
             </button>
           </div>
         </div>
-        <button type="submit"
+        <button v-if="!isLoading" type="submit"
           class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-150 ease-in-out">
           <i class="ri-login-box-line mr-2"></i>
           Sign In
         </button>
+        <div v-else class="flex justify-center">
+          <div class="h-6 w-6 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        </div>
       </form>
       <div class="mt-5 text-center">
         <p class="text-sm text-gray-600 dark:text-gray-400">
@@ -56,20 +59,45 @@
 <script setup>
 import { ref } from 'vue';
 import NavBarLandingPage from '@/components/LandingPage/NavBarLandingPage.vue';
+import { useAuthStore } from '@/stores/authStore';
+import { useRouter } from 'vue-router';
+import { MyToast } from '@/utils/toast';
+
+const router = useRouter();
+const authStore = useAuthStore();
+
+const isLoading = ref(false);
+const showPassword = ref(false);
+
 
 
 const usernameOrEmail = ref('');
 const password = ref('');
-const showPassword = ref(false);
+
+// Function to handle login
+const handleLogin = async () => {
+  isLoading.value = true;
+
+  const credentials = { usernameOrEmail: usernameOrEmail.value, password: password.value };
+
+  const response = await authStore.login(credentials);
+  isLoading.value = false;
+  if (response.error) {
+    MyToast.error(response.error);
+    return;
+  }
+
+  router.push('/home'); // Redirect to the homepage on success
+  MyToast.success("Logged In Successfully");
+};
+
+
+
 
 const toggleShowPassword = () => {
   showPassword.value = !showPassword.value;
 };
 
-const handleSubmit = () => {
-  // Handle form submission
-  console.log('Sign in submitted', { usernameOrEmail: usernameOrEmail.value, password: password.value });
-};
 </script>
 
 <style></style>

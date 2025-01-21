@@ -9,7 +9,7 @@
         <img src="/logo.png" alt="Legal Bot Ethio AI Logo" class="h-20">
       </div>
       <h2 class="text-2xl font-bold text-center mb-6 text-gray-800 dark:text-white">Sign Up</h2>
-      <form @submit.prevent="handleSubmit">
+      <form @submit.prevent="handleSignUp">
         <div v-if="step === 1">
           <div class="mb-4">
             <label for="username"
@@ -71,70 +71,79 @@
         </div>
         <div v-else-if="step === 2">
           <div class="mb-6">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">How familiar are you with
-              Ethiopian law?</label>
-            <div class="space-y-2">
-              <label class="flex items-center">
-                <input type="radio" v-model="lawFamiliarity" value="Beginner" class="mr-2">
-                <span>Beginner</span>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              How familiar are you with Ethiopian law?
+            </label>
+            <div class="flex space-x-2">
+              <label class="selectable-option" :class="{ 'selected': lawFamiliarity === 'Beginner' }">
+                <input type="radio" v-model="lawFamiliarity" value="Beginner" class="hidden">
+                Beginner
               </label>
-              <label class="flex items-center">
-                <input type="radio" v-model="lawFamiliarity" value="Intermediate" class="mr-2">
-                <span>Intermediate</span>
+              <label class="selectable-option" :class="{ 'selected': lawFamiliarity === 'Intermediate' }">
+                <input type="radio" v-model="lawFamiliarity" value="Intermediate" class="hidden">
+                Intermediate
               </label>
-              <label class="flex items-center">
-                <input type="radio" v-model="lawFamiliarity" value="Expert" class="mr-2">
-                <span>Expert</span>
+              <label class="selectable-option" :class="{ 'selected': lawFamiliarity === 'Expert' }">
+                <input type="radio" v-model="lawFamiliarity" value="Expert" class="hidden">
+                Expert
+              </label>
+            </div>
+          </div>
+
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              How would you rate your general understanding of legal processes?
+            </label>
+            <div class="flex space-x-2">
+              <label class="selectable-option" :class="{ 'selected': legalProcessUnderstanding === 'Low' }">
+                <input type="radio" v-model="legalProcessUnderstanding" value="Low" class="hidden">
+                Low
+              </label>
+              <label class="selectable-option" :class="{ 'selected': legalProcessUnderstanding === 'Moderate' }">
+                <input type="radio" v-model="legalProcessUnderstanding" value="Moderate" class="hidden">
+                Moderate
+              </label>
+              <label class="selectable-option" :class="{ 'selected': legalProcessUnderstanding === 'High' }">
+                <input type="radio" v-model="legalProcessUnderstanding" value="High" class="hidden">
+                High
               </label>
             </div>
           </div>
           <div class="mb-6">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">How would you rate your
-              general understanding of legal processes?</label>
-            <div class="space-y-2">
-              <label class="flex items-center">
-                <input type="radio" v-model="legalProcessUnderstanding" value="Low" class="mr-2">
-                <span>Low</span>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              How comfortable are you with legal terminology?
+            </label>
+            <div class="flex space-x-2">
+              <label class="selectable-option" :class="{ 'selected': legalTerminologyComfort === 'Not Comfortable' }">
+                <input type="radio" v-model="legalTerminologyComfort" value="Not Comfortable" class="hidden">
+                Not Comfortable
               </label>
-              <label class="flex items-center">
-                <input type="radio" v-model="legalProcessUnderstanding" value="Moderate" class="mr-2">
-                <span>Moderate</span>
+              <label class="selectable-option"
+                :class="{ 'selected': legalTerminologyComfort === 'Somewhat Comfortable' }">
+                <input type="radio" v-model="legalTerminologyComfort" value="Somewhat Comfortable" class="hidden">
+                Somewhat Comfortable
               </label>
-              <label class="flex items-center">
-                <input type="radio" v-model="legalProcessUnderstanding" value="High" class="mr-2">
-                <span>High</span>
-              </label>
-            </div>
-          </div>
-          <div class="mb-6">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">How comfortable are you with
-              legal terminology?</label>
-            <div class="space-y-2">
-              <label class="flex items-center">
-                <input type="radio" v-model="legalTerminologyComfort" value="Not Comfortable" class="mr-2">
-                <span>Not Comfortable</span>
-              </label>
-              <label class="flex items-center">
-                <input type="radio" v-model="legalTerminologyComfort" value="Somewhat Comfortable" class="mr-2">
-                <span>Somewhat Comfortable</span>
-              </label>
-              <label class="flex items-center">
-                <input type="radio" v-model="legalTerminologyComfort" value="Very Comfortable" class="mr-2">
-                <span>Very Comfortable</span>
+              <label class="selectable-option" :class="{ 'selected': legalTerminologyComfort === 'Very Comfortable' }">
+                <input type="radio" v-model="legalTerminologyComfort" value="Very Comfortable" class="hidden">
+                Very Comfortable
               </label>
             </div>
           </div>
+
         </div>
         <button v-if="step === 1" @click="nextStep" type="button"
           class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-150 ease-in-out">
           <i class="ri-arrow-right-line mr-2"></i>
           Next
         </button>
-        <button v-else-if="step === 2" type="submit"
+        <button v-else-if="step === 2 && !isLoading" type="submit"
           class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-150 ease-in-out">
           <i class="ri-user-add-line mr-2"></i>
           Sign Up
         </button>
+        <div v-else-if="step === 2 && isLoading" class="flex justify-center">
+          <div class="h-6 w-6 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        </div>
         <div class="mt-5 text-center">
           <p class="text-sm text-gray-600 dark:text-gray-400">
             Already Have an Account?
@@ -152,6 +161,15 @@
 <script setup>
 import { ref } from 'vue';
 import NavBarLandingPage from '@/components/LandingPage/NavBarLandingPage.vue';
+import { useAuthStore } from '@/stores/authStore';
+import { useRouter } from 'vue-router';
+import { MyToast } from '@/utils/toast';
+
+const router = useRouter();
+const authStore = useAuthStore();
+
+const isLoading = ref(false);
+
 
 const step = ref(1);
 const username = ref('');
@@ -181,16 +199,66 @@ const nextStep = () => {
   step.value = 2;
 };
 
-const handleSubmit = () => {
-  // Handle form submission
-  console.log('Sign up submitted', {
+const handleSignUp = async () => {
+  isLoading.value = true;
+
+  const signupPayload = {
     username: username.value,
-    name: name.value,
     email: email.value,
     password: password.value,
-    lawFamiliarity: lawFamiliarity.value,
+    role: 'user',
+    ethiopianLawKnowledge: lawFamiliarity.value,
     legalProcessUnderstanding: legalProcessUnderstanding.value,
-    legalTerminologyComfort: legalTerminologyComfort.value
-  });
+    legalTerminologyComfort: legalTerminologyComfort.value,
+  };
+
+  const response = await authStore.signUp(signupPayload);
+  isLoading.value = false;
+  if (response.error) {
+    MyToast.error(response.error);
+    return;
+  }
+
+  router.push('/signin'); // Redirect to the homepage on success
+  MyToast.success("Account Created!");
 };
+
+
 </script>
+
+
+<style scoped>
+.selectable-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+  border: 2px solid #d1d5db;
+  /* Neutral gray border */
+  border-radius: 0.375rem;
+  /* Rounded corners */
+  background-color: #f9fafb;
+  /* Light background */
+  color: #374151;
+  /* Neutral text color */
+  font-size: 0.875rem;
+  /* Text size */
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.selectable-option:hover {
+  background-color: #e5e7eb;
+  /* Slightly darker on hover */
+}
+
+.selectable-option.selected {
+  background-color: #3b82f6;
+  /* Blue background for selected */
+  color: white;
+  /* White text for selected */
+  border-color: #3b82f6;
+  /* Blue border for selected */
+}
+</style>

@@ -27,6 +27,9 @@ app.use('/uploads', (req, res, next) => {
     next();
 }, express.static(path.join(__dirname, '../uploads')));
 
+app.use(express.urlencoded({ extended: true }));
+
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/documents', docRoutes);

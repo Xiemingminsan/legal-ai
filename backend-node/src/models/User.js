@@ -23,17 +23,17 @@ const UserSchema = new mongoose.Schema({
   ethiopianLawKnowledge: {
     type: String,
     enum: ['Beginner', 'Intermediate', 'Expert'],
-    required: true,
+    required: false,
   },
   legalProcessUnderstanding: {
     type: String,
     enum: ['Low', 'Moderate', 'High'],
-    required: true,
+    required: false,
   },
   legalTerminologyComfort: {
     type: String,
     enum: ['Not Comfortable', 'Somewhat Comfortable', 'Very Comfortable'],
-    required: true,
+    required: false,
   },
 }, { timestamps: true });
 
