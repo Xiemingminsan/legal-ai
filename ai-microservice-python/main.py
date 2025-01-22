@@ -346,28 +346,13 @@ async def embed_document(
         logger.error(f"Error embedding document: {e}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/documents/{doc_id}/status")
-async def get_document_status(doc_id: str):
-    try:
-        doc_chunks = [doc for doc in global_state.documents_store if doc["doc_id"] == doc_id]
-        if not doc_chunks:
-            return {"status": "not_found", "progress": 0}
-
-        # Assume the first chunk's status is representative
-        status = doc_chunks[0].get("status", "processing")
-        progress = 100 if status == "completed" else 0
-        return {"status": status, "progress": progress}
-
-    except Exception as e:
-        logger.error(f"Error getting document status: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
 @app.post("/search")
 async def search_similar_chunks(
     query: str = Form(...),
     top_k: int = Form(3),
     semantic_weight: float = Form(0.7),
-    language: Optional[str] = Form("en")
+    language: Optional[str] = Form("en"),
+    bot_id: Optional[str] = Form(None)
 ) -> Dict[str, Any]:
     """
     Hybrid search endpoint using the new RAG system.
@@ -387,6 +372,13 @@ async def search_similar_chunks(
             return {"results": [], "status": "no_documents"}
         if not global_state.documents_store or global_state.rag_processor.index.ntotal == 0:
             return {"results": []}
+        
+        if bot_id:
+            # Get bot's document IDs from MongoDB
+            # Filter global_state.documents_store to only include those documents
+            filtered_docs = [doc for doc in global_state.documents_store if doc["doc_id"] in bot_document_ids]
+        else:
+            filtered_docs = global_state.documents_store
         
         # Perform hybrid search
         if language == "en":
@@ -436,6 +428,22 @@ async def search_similar_chunks(
         logger.error(f"Search error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/documents/{doc_id}/status")
+async def get_document_status(doc_id: str):
+    try:
+        doc_chunks = [doc for doc in global_state.documents_store if doc["doc_id"] == doc_id]
+        if not doc_chunks:
+            return {"status": "not_found", "progress": 0}
+
+        # Assume the first chunk's status is representative
+        status = doc_chunks[0].get("status", "processing")
+        progress = 100 if status == "completed" else 0
+        return {"status": status, "progress": progress}
+
+    except Exception as e:
+        logger.error(f"Error getting document status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 translator = ConcurrentTranslator()
 
@@ -475,7 +483,7 @@ def translate_english_to_amharic(text):
 async def rag_qa(query: str = Form(...), context: str = Form(...), top_k: int = Form(3), language: Optional[str] = Form("en")):
     try:
         semantic_weight=0.7
-        retrieval_res = await search_similar_chunks(query, top_k,semantic_weight)
+        retrieval_res = await search_similar_chunks(query, top_k,semantic_weight,)
         
         chunks = retrieval_res.get("results", [])
         if not chunks:
