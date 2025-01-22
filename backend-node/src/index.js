@@ -10,6 +10,8 @@ const docRoutes = require('./routes/docRoutes');
 const chatRoutes = require('./routes/chatRoutes');
 const docAnalysisRoutes = require('./routes/docAnalysisRoutes');
 const stemmerRoutes = require('./routes/stemmerRoutes');
+const adminRoutes = require('./routes/adminRoutes');
+
 
 
 const app = express();
@@ -36,6 +38,8 @@ app.use('/api/documents', docRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/docAnalysis', docAnalysisRoutes);
 app.use('/api/stemmer', stemmerRoutes);
+app.use('/api/admin', adminRoutes);
+
 
 
 // Catch-all route for unhandled paths

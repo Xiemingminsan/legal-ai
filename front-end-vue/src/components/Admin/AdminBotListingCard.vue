@@ -3,11 +3,11 @@
     <div class="p-4">
       <div class="flex items-center space-x-4">
         <div class="flex-shrink-0">
-          <img :src="bot.imageUrl || '/bot.png'"  :alt="bot.botName" class="h-12 w-12 rounded-full object-cover">
+          <img :src="bot.imageUrl || '/bot.png'"  :alt="bot.name" class="h-12 w-12 rounded-full object-cover">
         </div>
         <div class="flex-1 min-w-0">
           <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
-            {{ bot.botName }}
+            {{ bot.name }}
           </p>
           <p class="text-sm text-gray-500 dark:text-gray-400 truncate">
             {{ bot.botTypeCategory }}

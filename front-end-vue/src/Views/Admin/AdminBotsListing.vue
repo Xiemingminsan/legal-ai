@@ -42,18 +42,18 @@ import AdminBotListingCard from '@/components/Admin/AdminBotListingCard.vue';
 
 // Mock data for primary bots (replace with actual API call)
 const primaryBots = ref([
-  { _id: '1', botName: 'Legal Assistant', imageUrl: '', isPublic: true, botTypeCategory: 'Chatbot' },
-  { _id: '2', botName: 'Document Analyzer', imageUrl: '', isPublic: true, botTypeCategory: 'AnalysisBot' },
-  { _id: '3', botName: 'Case Researcher', imageUrl: '', isPublic: true, botTypeCategory: 'ResearchBot' },
+  { _id: '1', name: 'Legal Assistant', imageUrl: '', isPublic: true, botTypeCategory: 'Chatbot' },
+  { _id: '2', name: 'Document Analyzer', imageUrl: '', isPublic: true, botTypeCategory: 'AnalysisBot' },
+  { _id: '3', name: 'Case Researcher', imageUrl: '', isPublic: true, botTypeCategory: 'ResearchBot' },
 ]);
 
 // Mock data for user bots (replace with actual API call)
 const userBots = ref([
-  { _id: '4', botName: 'Contract Review Bot', imageUrl: '', isPublic: false, botTypeCategory: 'ReviewBot' },
-  { _id: '5', botName: 'Legal Q&A Assistant', imageUrl: '', isPublic: true, botTypeCategory: 'Chatbot' },
-  { _id: '6', botName: 'Case Law Finder', imageUrl: '', isPublic: false, botTypeCategory: 'ResearchBot' },
-  { _id: '7', botName: 'Legal Document Generator', imageUrl: '', isPublic: true, botTypeCategory: 'GeneratorBot' },
-  { _id: '8', botName: 'Compliance Checker', imageUrl: '', isPublic: false, botTypeCategory: 'ComplianceBot' },
+  { _id: '4', name: 'Contract Review Bot', imageUrl: '', isPublic: false, botTypeCategory: 'ReviewBot' },
+  { _id: '5', name: 'Legal Q&A Assistant', imageUrl: '', isPublic: true, botTypeCategory: 'Chatbot' },
+  { _id: '6', name: 'Case Law Finder', imageUrl: '', isPublic: false, botTypeCategory: 'ResearchBot' },
+  { _id: '7', name: 'Legal Document Generator', imageUrl: '', isPublic: true, botTypeCategory: 'GeneratorBot' },
+  { _id: '8', name: 'Compliance Checker', imageUrl: '', isPublic: false, botTypeCategory: 'ComplianceBot' },
 ]);
 
 const searchQuery = ref('');
@@ -62,7 +62,7 @@ const filteredUserBots = computed(() => {
   if (!searchQuery.value) return userBots.value;
   const query = searchQuery.value.toLowerCase();
   return userBots.value.filter(bot =>
-    bot.botName.toLowerCase().includes(query) ||
+    bot.name.toLowerCase().includes(query) ||
     bot.botTypeCategory.toLowerCase().includes(query)
   );
 });
