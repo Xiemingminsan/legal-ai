@@ -10,6 +10,10 @@ const BotSchema = new mongoose.Schema({
     type: String, 
     required: true 
   },
+  icon: {
+    type: String,
+    default: 'default.png'
+  },
   type: {
     type: String,
     enum: ['primary', 'custom', 'private'],

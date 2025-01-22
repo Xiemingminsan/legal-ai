@@ -42,7 +42,7 @@ const router = createRouter({
         { path: 'dashboard', component: AdminDashboard },
         { path: 'users', component: UserManagement },
         { path: 'bots', component: AdminBotsListing },
-        { path: 'bot', component: AdminBotDetails },
+        { path: 'bot/:id', component: AdminBotDetails },
         { path: 'createBot', component: CreateNewBot },
         { path: 'settings', component: AdminSettings },
       ],
@@ -52,7 +52,7 @@ const router = createRouter({
     //   component: AdminBaseLayout,
     //   children: [{ path: 'adminHome', component: AdminHome }],
     // },
-    { path: '/:pathMatch(.*)*', redirect: '/' }, // Redirect unknown routes to the landing page
+    // { path: '/:pathMatch(.*)*', redirect: '/' }, // Redirect unknown routes to the landing page
   ],
 })
 

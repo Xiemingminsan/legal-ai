@@ -55,6 +55,47 @@ export const useAdminStore = defineStore('adminStore', () => {
     }
   }
 
+  async function getBot(botId) {
+    try {
+      const response = await MyHttpService.get('/admin/getBot', {
+        useJWT: true,
+        query: { botId: botId },
+      })
+
+      // If response contains error, return that immediately
+      if (response.error) {
+        return { error: response.error || 'Unable To Get Bot Details' }
+      }
+
+      return response
+    } catch (err) {
+      console.error(err) // Log the error in the console
+
+      return { error: 'Internal Error' }
+    }
+  }
+
+  async function deleteBot(botId) {
+    try {
+      const response = await MyHttpService.post('/admin/deleteBot', {
+        useJWT: true,
+        body: { botId: botId },
+      })
+
+      // If response contains error, return that immediately
+      if (response.error) {
+        return { error: response.error || 'Unable To Delete Bot' }
+      }
+
+      return response
+    } catch (err) {
+      console.error(err) // Log the error in the console
+
+      //@todo update that user account status or remove from table
+      return { error: 'Internal Error' }
+    }
+  }
+
   async function updateSystemPrompt(prompt) {
     try {
       const response = await MyHttpService.post('/admin/updateSystemPrompt', {
@@ -120,6 +161,8 @@ export const useAdminStore = defineStore('adminStore', () => {
     getServerHealth,
     getDashboardData,
     updateSystemPrompt,
+    deleteBot,
+    getBot,
     getAllBots,
     getAllUsers,
     suspendUser,
