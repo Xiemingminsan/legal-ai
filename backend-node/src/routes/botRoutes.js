@@ -4,56 +4,107 @@ const router = express.Router();
 const authMiddleware = require('../middlewares/authMiddleware');
 const Bot = require('../models/Bot');
 const Document = require('../models/Document');
+const { uploadDocument } = require('../helpers/utils');
 
 //Add bots
-router.post('/', authMiddleware, async (req, res) => {
-    try {
-      const { name, description, type, visibility, systemPrompt } = req.body;
-      
-      // Validate input
-      if (!name || !description || !systemPrompt) {
-        return res.status(400).json({ msg: 'Missing required fields' });
-      }
-  
-      // Only admins can create primary bots
-      if (type === 'primary' && req.user.role !== 'admin') {
-        return res.status(403).json({ msg: 'Only admins can create primary bots' });
-      }
-  
-      const bot = new Bot({
-        name,
-        description,
-        type,
-        visibility,
-        systemPrompt,
-        creator: req.user.userId
-      });
-  
-      await bot.save();
-      res.status(201).json(bot);
-    } catch (error) {
-      console.error('Error creating bot:', error);
-      res.status(500).json({ msg: 'Server error' });
+const multer = require('multer');
+const path = require('path');
+// Set up Multer
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/'); // folder for uploaded files
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  },
+});
+const upload = multer({ 
+  storage,
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype !== 'application/pdf') {
+      return cb(new Error('Only PDF files are allowed'), false);
     }
-  });
+    cb(null, true);
+  }
+});
+
+router.post('/add', authMiddleware, upload.array('files'), async (req, res) => {
+  try {
+    const { name, description, icon, visibility, systemPrompt, type } = req.body;
+    const metadata = JSON.parse(req.body.metadata || '[]');
+    
+    if (!name || !description || !req.files?.length) {
+      return res.status(400).json({ msg: 'Missing required fields' });
+    }
+
+    // Create bot
+    const bot = new Bot({
+      name,
+      description,
+      icon,
+      visibility,
+      systemPrompt,
+      type,
+      creator: req.user.userId,
+    });
+
+    // Process each file
+    const results = [];
+    const errors = [];
+
+    for (let i = 0; i < req.files.length; i++) {
+      try {
+        const file = req.files[i];
+        const fileMetadata = metadata[i];
+
+        const result = await uploadDocument(file, {
+          title: fileMetadata.title,
+          category: fileMetadata.category,
+          docScope: fileMetadata.docScope,
+          language: fileMetadata.language
+        }, req.user.userId);
+
+        bot.documents.push(result.docId);
+        results.push(result);
+      } catch (error) {
+        errors.push({
+          file: req.files[i].originalname,
+          error: error.message
+        });
+      }
+    }
+
+    await bot.save();
+
+    res.status(201).json({
+      bot,
+      results,
+      errors: errors.length ? errors : undefined
+    });
+  } catch (error) {
+    console.error('Error creating bot:', error);
+    res.status(500).json({ msg: 'Server error' });
+  }
+});
   
 //Get Bots
   router.get('/', authMiddleware, async (req, res) => {
       try {
         // Get primary bots
-        const primaryBots = await Bot.find({ type: 'primary' });
+        const primaryBots = await Bot.find({ type: 'primary' }).populate('documents');
         
         // Get public custom bots
         const publicCustomBots = await Bot.find({ 
           type: 'custom',
           visibility: 'public'
-        });
+        }).populate('documents');
         
         // Get user's private bots
         const privateBots = await Bot.find({ 
           creator: req.user.userId,
           type: 'private'
-        });
+        }).populate('documents');
     
         res.json({
           primary: primaryBots,

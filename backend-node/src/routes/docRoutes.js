@@ -7,6 +7,9 @@ const axios = require('axios');
 const Document = require('../models/Document');
 const FormData = require('form-data'); // Add this line
 const fs = require('fs'); // To check file existence
+const { uploadDocument } = require('../helpers/utils');
+
+
 
 const router = express.Router();
 
@@ -30,111 +33,50 @@ const upload = multer({
   }
 });
 
-// POST /api/documents/upload
-router.post('/upload', authMiddleware, upload.single('file'), async (req, res) => {
+router.post('/upload', authMiddleware, upload.array('files', 1000), async (req, res) => {
   try {
-    const { title, category, docScope, language } = req.body;
-    const file = req.file;
-    console.log("Title:", title);
-    console.log("Category:", category);
-    console.log("Document Scope:", docScope);
-    console.log("Language:", language);
-    
-    
-    // Validation
-    if (!title?.trim()) {
-      return res.status(400).json({ msg: 'Title is required' });
-    }
-    
-    if (!file) {
-      return res.status(400).json({ msg: 'No file uploaded' });
-    }
-    if(!category){
-      return res.status(400).json({ msg: 'Category is required' });
-    }
-    if(!docScope){
-      return res.status(400).json({ msg: 'Document Scope is required' });
-    }
-    if(!language){
-      return res.status(400).json({ msg: 'Language is required' });
+    const files = req.files; // Array of uploaded files
+    const metadata = JSON.parse(req.body.metadata); // Parse metadata from JSON string
+
+    if (!files || files.length === 0) {
+      return res.status(400).json({ msg: 'No files uploaded' });
     }
 
-    // Create document record with initial status
-    const newDoc = new Document({
-      title,
-      filePath: file.path,
-      uploaderId: req.user.userId,
-      status: 'processing', // Add status field to your schema
-      processingError: null,
-      category: category || 'uncategorized',
-      docScope: docScope || 'public',
-      language: language || 'en'
-    });
-    
-    await newDoc.save();
-    
-    // Process with AI service
-    const pdfFullPath = path.resolve(file.path);
-    const aiServiceUrl = process.env.AI_SERVICE_URL;
-    
-    if (!fs.existsSync(pdfFullPath)) {
-      newDoc.status = 'failed';
-      newDoc.processingError = 'File not found on server';
-      await newDoc.save();
-      return res.status(400).json({ msg: 'Uploaded file not found on server.' });
+    if (!metadata || metadata.length !== files.length) {
+      return res.status(400).json({ msg: 'Metadata count must match the number of files uploaded' });
     }
-    
-    // Send initial success response
-    res.json({ 
-      msg: 'Document upload started', 
-      doc: newDoc,
-      status: 'processing'
-    });
-    
-    // Process with AI service asynchronously
+
+    const results = [];
+    const errors = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const fileMetadata = metadata[i];
+
       try {
-        const form = new FormData();
-        form.append('doc_id', newDoc._id.toString());
-        form.append('pdf_path', pdfFullPath);
-        form.append('doc_scope', docScope);
-        form.append('category', category);
-        form.append('language', language);
-        console.log("Form data:", form);
-
-        console.log("Sending request to AI service...");
-        console.log("Document ID:", newDoc._id.toString());
-
-
-        const response = await axios.post(`${aiServiceUrl}/embed_document`, form, {
-          headers: form.getHeaders(),
-          timeout: 300000 // 5 minute timeout
+        // Pass metadata for each file to the uploadDocument function
+        const result = await uploadDocument(file, fileMetadata, req.user.userId);
+        results.push(result);
+      } catch (error) {
+        console.error(`Error processing file ${file.originalname}:`, error.message);
+        errors.push({
+          file: file.originalname,
+          error: error.message,
         });
-
-      console.log("AI service response:", response.data);
-
-      
-      // Update document status on success
-      newDoc.status = 'completed';
-      newDoc.processingError = null;
-      await newDoc.save();
-      
-      console.log("Document processed successfully:", {
-        docId: newDoc._id,
-        chunksAdded: response.data.chunks_added
-      });
-      
-    } catch (error) {
-      console.error("AI processing failed:", error.message);
-      newDoc.status = 'failed';
-      newDoc.processingError = error.message;
-      await newDoc.save();
+      }
     }
-    
-  } catch (err) {
-    console.error("Upload error:", err);
-    res.status(500).json({ msg: 'Server error' });
+
+    res.json({
+      msg: errors.length ? 'Some files failed to process' : 'All files processed successfully',
+      results,
+      errors,
+    });
+  } catch (error) {
+    console.error('Upload error:', error.message);
+    res.status(500).json({ msg: error.message });
   }
 });
+
 
 // GET /api/documents
 router.get('/', authMiddleware, async (req, res) => {

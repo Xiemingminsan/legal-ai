@@ -286,65 +286,94 @@ async def shutdown_event():
     """Save state on shutdown."""
     await global_state.save_state()
 
-@app.post("/embed_document")
-async def embed_document(
-    doc_id: str = Form(...),
-    pdf_path: str = Form(...),
-    doc_scope: str = Form(...),
-    category: str = Form(...),
-    language: Optional[str] = Form("en")
+@app.post("/embed_documents")
+async def embed_documents(
+    doc_ids: List[str] = Form(...),
+    pdf_paths: List[str] = Form(...),
+    doc_scopes: List[str] = Form(...),
+    categories: List[str] = Form(...),
+    languages: List[str] = Form(["en"])
 ) -> Dict[str, Any]:
-    try:
-        logger.info(f"Processing doc_id={doc_id}, pdf_path={pdf_path}")
+    if len(doc_ids) != len(pdf_paths) or len(pdf_paths) != len(doc_scopes) or len(doc_scopes) != len(categories):
+        raise HTTPException(status_code=400, detail="Mismatched input lengths")
 
-        # Extract text from PDF
-        text = PDFExtractor.extract_content(pdf_path)
-        if not text:
-            raise HTTPException(status_code=400, detail="No text extracted from PDF")
+    async def process_single_document(idx: int):
+        try:
+            doc_id = doc_ids[idx]
+            pdf_path = pdf_paths[idx]
+            doc_scope = doc_scopes[idx]
+            category = categories[idx]
+            language = languages[idx] if idx < len(languages) else "en"
 
-        # Process document with RAG system
-        result = await global_state.rag_processor.process_document(doc_id, text,language)
-        
-        # Update documents store with new entries
-        current_time = datetime.datetime.utcnow().isoformat()
-        filename = os.path.basename(pdf_path)
-        
-        # Remove any existing entries for this doc_id
-        global_state.documents_store = [
-            doc for doc in global_state.documents_store 
-            if doc["doc_id"] != doc_id
-        ]
+            logger.info(f"Processing doc_id={doc_id}, pdf_path={pdf_path}")
 
-        # Add new entries from the processed chunks
-        for chunk_data in result["chunk_data"]:
-            doc_entry = {
+            # Extract text from PDF
+            text = PDFExtractor.extract_content(pdf_path)
+            if not text:
+                raise HTTPException(status_code=400, detail=f"No text extracted from PDF {pdf_path}")
+
+            # Process document with RAG system
+            result = await global_state.rag_processor.process_document(doc_id, text, language)
+
+            # Update documents store with new entries
+            current_time = datetime.datetime.utcnow().isoformat()
+            filename = os.path.basename(pdf_path)
+
+            # Remove any existing entries for this doc_id
+            global_state.documents_store = [
+                doc for doc in global_state.documents_store
+                if doc["doc_id"] != doc_id
+            ]
+
+            # Add new entries from the processed chunks
+            for chunk_data in result["chunk_data"]:
+                doc_entry = {
+                    "doc_id": doc_id,
+                    "title": filename,
+                    "text": chunk_data["original_text"],
+                    "index": len(global_state.documents_store),
+                    "uploadDate": current_time,
+                    "docScope": doc_scope,
+                    "category": category,
+                    "language": language,
+                    "status": "completed"
+                }
+                state_lock = asyncio.Lock()
+
+                async with state_lock:
+                    global_state.documents_store.append(doc_entry)
+                    
+            return {
+                "status": "success",
                 "doc_id": doc_id,
-                "title": filename,
-                "text": chunk_data["original_text"],
-                "index": len(global_state.documents_store),
-                "uploadDate": current_time,
-                "docScope": doc_scope,
-                "category": category,
-                "language": language,
-                "status": "completed"
+                "chunks_added": result["num_chunks"],
+                "stats": result["metadata"]
             }
-            global_state.documents_store.append(doc_entry)
-
-        # Save state immediately
-        await global_state.save_state()
-
-        logger.info(f"Successfully processed document {doc_id} with {len(result['chunk_data'])} chunks")
         
-        return {
-            "status": "success",
-            "doc_id": doc_id,
-            "chunks_added": result["num_chunks"],
-            "stats": result["metadata"]
-        }
+        except Exception as e:
+            logger.error(f"Error embedding document {doc_ids[idx]}: {e}\n{traceback.format_exc()}")
+            return {"doc_id": doc_ids[idx], "error": str(e)}
 
+    # Process all documents concurrently
+    results = await asyncio.gather(*[process_single_document(i) for i in range(len(doc_ids))])
+
+    # Save state after processing all documents
+    try:
+        await global_state.save_state()
     except Exception as e:
-        logger.error(f"Error embedding document: {e}\n{traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error saving global state: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail="Failed to save state after processing documents")
+
+    # Separate successes and errors
+    successes = [res for res in results if "error" not in res]
+    errors = [res for res in results if "error" in res]
+
+    return {
+        "status": "partial_success" if errors else "success",
+        "results": successes,
+        "errors": errors
+    }
+
 
 @app.post("/search")
 async def search_similar_chunks(
