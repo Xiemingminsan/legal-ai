@@ -38,6 +38,23 @@ export const useAdminStore = defineStore('adminStore', () => {
     }
   }
 
+  async function getAllBots() {
+    try {
+      const response = await MyHttpService.get('/admin/getAllBots', { useJWT: true })
+
+      // If response contains error, return that immediately
+      if (response.error) {
+        return { error: response.error || 'Unable To Get Bots' }
+      }
+
+      return response
+    } catch (err) {
+      console.error(err) // Log the error in the console
+
+      return { error: 'Internal Error' }
+    }
+  }
+
   async function updateSystemPrompt(prompt) {
     try {
       const response = await MyHttpService.post('/admin/updateSystemPrompt', {
@@ -79,9 +96,31 @@ export const useAdminStore = defineStore('adminStore', () => {
     }
   }
 
+  async function getDashboardData() {
+    try {
+      const response = await MyHttpService.get('/admin/getDashboardData', {
+        useJWT: true,
+      })
+
+      // If response contains error, return that immediately
+      if (response.error) {
+        return { error: response.error || 'Unable To Get Dasboard Data' }
+      }
+
+      return response
+    } catch (err) {
+      console.error(err) // Log the error in the console
+
+      //@todo update that user account status or remove from table
+      return { error: 'Internal Error' }
+    }
+  }
+
   return {
     getServerHealth,
+    getDashboardData,
     updateSystemPrompt,
+    getAllBots,
     getAllUsers,
     suspendUser,
   }

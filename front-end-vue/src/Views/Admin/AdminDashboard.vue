@@ -1,19 +1,30 @@
 <template>
-  <div class="space-y-6">
+  <!-- Loading state -->
+  <div v-if="isLoading" class="flex justify-center items-center">
+    <div class="animate-spin border-t-2 border-blue-600 border-solid rounded-full w-8 h-8"></div>
+  </div>
+
+  <!-- Error state -->
+  <ErrorRetryComp v-else-if="error" :errorMessage="error" :onRetry="getDashboardData" />
+
+  <!-- if Page Loadded -->
+  <div v-else class="space-y-6">
     <!-- Summary Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      <DashboardCard title="Total Users" :value="totalUsers" icon="ri-user-line" color="blue" />
-      <DashboardCard title="Active Cases" :value="activeCases" icon="ri-file-list-3-line" color="green" />
-      <DashboardCard title="Total AI Bots" :value="aiConsultations" icon="ri-robot-line" color="purple" />
-      <DashboardCard title="Files Uploaded" :value="totalFilesUploaded" icon="ri-file-upload-line" color="orange" />
+      <DashboardCard title="Total Users" :value="headerData.totalUsers" icon="ri-user-line" color="blue" />
+      <DashboardCard title="Active Cases" value="NaN Bruh" icon="ri-file-list-3-line" color="green" />
+      <DashboardCard title="Total AI Bots" :value="headerData.totalBots" icon="ri-robot-line" color="purple" />
+      <DashboardCard title="Files Uploaded" :value="headerData.totalDocuments" icon="ri-file-upload-line"
+        color="orange" />
     </div>
 
     <!-- Files Uploaded Graph -->
-    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+    <div class="bg-white max-h-300px overflow-hidden dark:bg-gray-800 p-6 rounded-lg shadow-md">
       <div class="flex justify-between items-center mb-4">
-        <h2 class="text-xl font-semibold text-gray-800 dark:text-white">Files Uploaded (Last 10 Days)</h2>
+        <h2 class="text-xl font-semibold text-gray-800 dark:text-white">Files Uploaded Analystics</h2>
         <select v-model="chartPeriod"
           class="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white rounded-md px-2 py-1">
+          <option disabled value="">Pick Days</option>
           <option value="10">Last 10 Days</option>
           <option value="30">Last 30 Days</option>
           <option value="60">Last 60 Days</option>
@@ -25,7 +36,7 @@
     <!-- User Activity and Recent Sign-ups -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <!-- Trending Recent Bots -->
-      <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+      <div class="bg-white dark:bg-gray-800  h-[calc(100%-300px)] p-6 rounded-lg shadow-md">
         <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Trending Recent Bots</h2>
         <div class="space-y-4">
           <div v-for="bot in trendingBots" :key="bot.id" class="flex items-center space-x-4">
@@ -67,13 +78,13 @@
               </tr>
             </thead>
             <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-              <tr v-for="user in recentUsers" :key="user.id">
+              <tr v-for="user in recentSignups" :key="user.id">
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white"> <i
                     class="ri-user-fill text-blue-500 text-lg mr-3"></i>{{ user.name }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300"><i
                     class="ri-mail-fill text-green-500 text-lg mr-3"></i>{{ user.email }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300"> <i
-                    class="ri-calendar-line text-yellow-500 text-lg mr-3"></i>{{ formatDate(user.signUpDate) }}</td>
+                    class="ri-calendar-line text-yellow-500 text-lg mr-3"></i>{{ formatDate(user.createdAt) }}</td>
               </tr>
             </tbody>
           </table>
@@ -84,83 +95,83 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, computed } from 'vue';
 import DashboardCard from '@/components/Admin/DashboardCard.vue';
 import Chart from 'chart.js/auto';
+import { useAdminStore } from '@/stores/adminStore';
+import { MyToast } from '@/utils/toast';
+import ErrorRetryComp from '@/components/Basics/ErrorRetryComp.vue';
 
-// Summary metrics
-const totalUsers = ref(1234);
-const activeCases = ref(56);
-const aiConsultations = ref(789);
-const totalFilesUploaded = ref(3456);
+
+const adminStore = useAdminStore();
+let chart;
+
+const isLoading = ref(false);
+const error = ref(null);
+const headerData = ref({})
+const uploadsLast60Days = ref([])
+const recentSignups = ref([])
+const trendingBots = ref([])
 
 // Files Uploaded Graph
 const fileUploadChart = ref(null);
-const chartPeriod = ref('10');
-const fileUploadData = ref([
-  { date: '2023-05-01', count: 15 },
-  { date: '2023-05-02', count: 20 },
-  { date: '2023-05-03', count: 18 },
-  { date: '2023-05-04', count: 25 },
-  { date: '2023-05-05', count: 22 },
-  { date: '2023-05-06', count: 30 },
-  { date: '2023-05-07', count: 28 },
-  { date: '2023-05-08', count: 35 },
-  { date: '2023-05-09', count: 32 },
-  { date: '2023-05-10', count: 40 },
-]);
-
-// User Activity
-const trendingBots = ref([
-  {
-    id: 1,
-    name: "Legal Advisor Bot",
-    avatar: "",
-    usersInteracted: 543,
-  },
-  {
-    id: 2,
-    name: "Tax Helper Bot",
-    avatar: "",
-    usersInteracted: 321,
-  },
-  // Add more bots here
-]);
+const chartPeriod = ref('');
 
 
+const getDashboardData = async () => {
+  isLoading.value = true;
+  error.value = null; // Reset the error before the request
 
+  const response = await adminStore.getDashboardData();
+  isLoading.value = false;
 
-// Recent User Sign-ups
-const recentUsers = ref([
-  { id: 1, name: 'John Doe', email: 'john@example.com', signUpDate: '2023-05-10T14:30:00Z' },
-  { id: 2, name: 'Jane Smith', email: 'jane@example.com', signUpDate: '2023-05-09T09:15:00Z' },
-  { id: 3, name: 'Bob Johnson', email: 'bob@example.com', signUpDate: '2023-05-08T16:45:00Z' },
-  { id: 4, name: 'Alice Brown', email: 'alice@example.com', signUpDate: '2023-05-07T11:20:00Z' },
-  { id: 5, name: 'Charlie Wilson', email: 'charlie@example.com', signUpDate: '2023-05-06T13:10:00Z' },
-]);
+  if (response.error) {
+    error.value = response.error; // Set the error message
+    MyToast.error(response.error); // Optionally show a toast message
+    return;
+  }
 
-let chart;
+  headerData.value = response.headerData;
+  uploadsLast60Days.value = response.uploadsLast60Days;
+  recentSignups.value = response.recentSignups;
+  trendingBots.value = response.trendingBots;
+};
+
 
 onMounted(() => {
+  getDashboardData();
+  if (chart) {
+    chart.destroy();
+  }
+  console.log("Mount Changingg")
   createChart();
 });
+
+
+
+
 
 watch(chartPeriod, () => {
   if (chart) {
     chart.destroy();
   }
+  console.log("Changingg")
   createChart();
 });
 
 const createChart = () => {
   const ctx = fileUploadChart.value.getContext('2d');
+
+  // Filter data based on the selected period
+  const filteredData = getFilteredData(chartPeriod.value);
+
   chart = new Chart(ctx, {
     type: 'line',
     data: {
-      labels: fileUploadData.value.map(item => item.date),
+      labels: filteredData.map(item => item.date),
       datasets: [{
         label: 'Files Uploaded',
-        data: fileUploadData.value.map(item => item.count),
+        data: filteredData.map(item => item.count),
         borderColor: 'rgb(59, 130, 246)',
         backgroundColor: 'rgba(59, 130, 246, 0.1)',
         tension: 0.1
@@ -174,6 +185,12 @@ const createChart = () => {
           title: {
             display: true,
             text: 'Number of Files'
+          },
+          ticks: {
+            stepSize: 1, // Forces integer ticks
+            callback: function (value) {
+              return value % 1 === 0 ? value : ''; // Ensure integer display
+            }
           }
         },
         x: {
@@ -192,19 +209,20 @@ const createChart = () => {
   });
 };
 
+// Function to filter data based on selected period
+const getFilteredData = (period) => {
+  const daysMap = {
+    '10': 10,
+    '30': 30,
+    '60': 60
+  };
+  const days = daysMap[period] || 10; // Default to 10 if no match
+  return uploadsLast60Days.value.slice(-days);
+};
+
 const formatDate = (dateString) => {
   const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
   return new Date(dateString).toLocaleDateString('en-US', options);
 };
 
-
-const viewUserDetails = (userId) => {
-  console.log(`Viewing details for user ${userId}`);
-  // Implement user details view logic
-};
-
-const sendWelcomeEmail = (userId) => {
-  console.log(`Sending welcome email to user ${userId}`);
-  // Implement welcome email sending logic
-};
 </script>

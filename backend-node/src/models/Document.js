@@ -1,7 +1,7 @@
-  // src/models/Document.js
-  const mongoose = require('mongoose');
+const mongoose = require('mongoose');
 
-  const DocumentSchema = new mongoose.Schema({
+const DocumentSchema = new mongoose.Schema(
+  {
     title: { type: String, required: true },
     filePath: { type: String, required: true },
     uploaderId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -14,8 +14,10 @@
       enum: ['private', 'public'],
       default: 'public'
     },
-    language: { type: String, enum:['en','amh'], default: 'en' },
+    language: { type: String, enum: ['en', 'amh'], default: 'en' },
     uploadDate: { type: Date, default: Date.now }
-  });
+  },
+  { timestamps: true } // This will add createdAt and updatedAt fields
+);
 
-  module.exports = mongoose.model('Document', DocumentSchema);
+module.exports = mongoose.model('Document', DocumentSchema);
