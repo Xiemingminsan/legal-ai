@@ -37,7 +37,7 @@ export default class MyHttpService {
 
     // Attach JWT if needed
     if (useJWT) {
-      const jwt = localStorage.getItem('jwt')
+      const jwt = localStorage.getItem('token')
       if (jwt) {
         headers.Authorization = `Bearer ${jwt}`
       }

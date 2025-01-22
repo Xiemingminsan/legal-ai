@@ -1,0 +1,42 @@
+<template>
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+    <div class="p-4">
+      <div class="flex items-center space-x-4">
+        <div class="flex-shrink-0">
+          <img :src="bot.imageUrl || '/bot.png'"  :alt="bot.botName" class="h-12 w-12 rounded-full object-cover">
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
+            {{ bot.botName }}
+          </p>
+          <p class="text-sm text-gray-500 dark:text-gray-400 truncate">
+            {{ bot.botTypeCategory }}
+          </p>
+        </div>
+        <div class="flex-shrink-0">
+          <span :class="bot.isPublic ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
+            {{ bot.isPublic ? 'Public' : 'Private' }}
+          </span>
+        </div>
+      </div>
+    </div>
+    <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 text-right">
+      <button class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300">
+        <i class="ri-chat-3-line mr-1"></i> Chat
+      </button>
+      <router-link to="/admin/bot" class="ml-4 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-500 dark:hover:text-gray-300">
+        <i class="ri-information-line mr-1"></i> Details
+      </router-link>
+    </div>
+  </div>
+</template>
+
+<script setup>
+
+defineProps({
+  bot: {
+    type: Object,
+    required: true
+  }
+});
+</script>

@@ -13,12 +13,6 @@
             About
           </a>
         </div>
-
-        <div class="px-5 py-2">
-          <a href="#" class="text-base text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">
-            Privacy Policy
-          </a>
-        </div>
         <div class="px-5 py-2">
           <a href="#tos" class="text-base text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">
             Terms of Service

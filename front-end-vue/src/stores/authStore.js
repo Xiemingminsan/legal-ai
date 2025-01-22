@@ -37,6 +37,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       setUser(response)
 
+
       return response
     } catch (err) {
       console.error(err) // Log the error in the console
@@ -67,6 +68,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function getMyAccount() {
     try {
+      console.log(token.value);
       const response = await MyHttpService.get('/auth/getMyAccount', { useJWT: true })
       // If response contains error, return that immediately
       if (response.error) {
