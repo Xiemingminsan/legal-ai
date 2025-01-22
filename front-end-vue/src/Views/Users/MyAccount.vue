@@ -10,23 +10,7 @@
       </div>
 
       <!-- Error state -->
-      <div v-else-if="error" class="flex items-center bg-red-100 text-red-600 p-4 rounded-md">
-        <!-- Error Icon -->
-        <i class="ri-error-warning-line text-xl mr-3"></i>
-
-        <!-- Error Message -->
-        <div class="flex flex-col">
-          <p class="font-semibold">An Error Occurred</p>
-          <p>{{ error }}</p>
-        </div>
-
-        <!-- Try Again Button -->
-        <button @click="getMyAccount" class="ml-auto text-red-600 hover:text-red-700 flex items-center">
-          <i class="ri-refresh-line mr-1"></i>
-          Try Again
-        </button>
-      </div>
-
+      <ErrorRetryComp v-else-if="error" :errorMessage="error" :onRetry="getMyAccount" />
 
       <!-- User Profile Section -->
       <div v-else class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-8">
@@ -120,6 +104,7 @@
 import DarkModeToggle from "@/components/Basics/DarkModeToggle.vue";
 import BuyPremiumBtn from '@/components/User/BuyPremiumBtn.vue';
 import LanguageSelector from '@/components/Basics/LanguageSelector.vue';
+import ErrorRetryComp from "@/components/Basics/ErrorRetryComp.vue";
 import { ref, onMounted } from 'vue';
 import { MyUtils } from "@/utils/Utils";
 import { useAuthStore } from '@/stores/authStore';

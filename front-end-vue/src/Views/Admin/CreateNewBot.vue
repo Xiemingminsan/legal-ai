@@ -22,18 +22,38 @@
               <label for="botImage" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Bot Image</label>
               <div class="mt-1 flex items-center">
                 <span class="inline-block h-12 w-12 rounded-full overflow-hidden bg-gray-100">
-                  <img v-if="previewImage" :src="previewImage" alt="Bot image preview"
-                    class="h-full w-full object-cover">
+                  <img v-if="botImage" :src="botImage" alt="Selected bot image" class="h-full w-full object-cover">
                   <i v-else class="ri-image-line text-gray-300 text-3xl flex items-center justify-center h-full"></i>
                 </span>
-                <label for="botImage"
-                  class="ml-5 bg-white dark:bg-gray-600 py-2 px-3 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 cursor-pointer">
-                  <i class="ri-upload-2-line mr-2"></i>
-                  Upload
-                </label>
-                <input type="file" id="botImage" @change="handleImageUpload" accept="image/*" class="sr-only">
+                <button @click="openIconPicker"
+                  class="ml-5 bg-white dark:bg-gray-600 py-2 px-3 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                  <i class="ri-gallery-line mr-2"></i>
+                  Choose Icon
+                </button>
+              </div>
+
+              <!-- Modal for Selecting Bot Icons -->
+              <div v-if="isIconPickerOpen"
+                class="fixed inset-0 bg-gray-800 bg-opacity-50 z-50 flex items-center justify-center">
+                <div class="bg-white dark:bg-gray-900 rounded-lg p-6 shadow-lg max-w-md w-full">
+                  <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Select Bot Icon</h3>
+                  <div class="grid grid-cols-4 gap-4">
+                    <div v-for="icon in botIcons" :key="icon" class="cursor-pointer">
+                      <img :src="icon" @click="selectIcon(icon)" alt="Bot Icon"
+                        class="h-12 w-12 rounded-full object-cover border-2"
+                        :class="botImage === icon ? 'border-blue-500' : 'border-transparent'">
+                    </div>
+                  </div>
+                  <div class="mt-4 flex justify-end">
+                    <button @click="closeIconPicker"
+                      class="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-md shadow-sm hover:bg-gray-300 dark:hover:bg-gray-600">
+                      Close
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
+
           </div>
           <div>
             <label for="botDesc" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
@@ -45,6 +65,16 @@
                 class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white dark:bg-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"></textarea>
             </div>
           </div>
+          <div>
+            <label for="subSystemPrompt" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Sub System Prompt</label>
+            <div class="mt-1 relative rounded-md shadow-sm">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <i class="ri-robot-line text-gray-400"></i>
+              </div>
+              <textarea v-model="subSystemPrompt" id="subSystemPrompt" rows="3" required
+                class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white dark:bg-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"></textarea>
+            </div>
+          </div>
           <div class="flex flex-col sm:flex-row sm:items-center sm:space-x-4">
             <div class="flex items-center">
               <input v-model="isPublic" type="checkbox" id="isPublic"
@@ -52,19 +82,30 @@
               <label for="isPublic" class="ml-2 block text-sm text-gray-900 dark:text-gray-300">Make Public</label>
             </div>
             <div class="sm:mt-0 flex-1">
-              <div class="mt-1 relative rounded-md shadow-sm">
-                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <i class="ri-folder-line text-gray-400"></i>
+              <fieldset>
+                <legend class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select up to 3 Categories
+                </legend>
+                <div class="space-y-2">
+                  <div v-for="cat in categories" :key="cat" class="flex items-center">
+                    <input type="checkbox" :value="cat" v-model="category" @change="handleCategoryChange"
+                      id="category-{{ cat }}"
+                      class="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-400 rounded" />
+                    <label :for="'category-' + cat" class="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+                      {{ cat }}
+                    </label>
+                  </div>
                 </div>
-                <select v-model="category" id="category" required
-                  class="block w-full pl-10 pr-10 py-2 text-base dark:text-white border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md bg-white dark:bg-gray-700">
-                  <option value="">Select a category</option>
-                  <option value="Criminal Law">Criminal Law</option>
-                  <option value="Family Law">Family Law</option>
-                  <option value="Corporate Law">Corporate Law</option>
-                  <option value="Intellectual Property">Intellectual Property</option>
-                </select>
-              </div>
+                <p v-if="category.length > 0" class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                  Selected:
+                  <span v-for="cat in category" :key="cat"
+                    class="bg-purple-100 text-purple-800 px-2 inline-flex text-xs leading-5 font-semibold rounded-full mr-1">
+                    {{ cat }}
+                  </span>
+                </p>
+                <p v-else class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                  No categories selected.
+                </p>
+              </fieldset>
             </div>
           </div>
         </div>
@@ -147,7 +188,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 
 // Props
 const props = defineProps({
@@ -160,12 +201,62 @@ const props = defineProps({
 // Reactive state
 const botName = ref('');
 const botDesc = ref('');
-const botImage = ref(null);
+const subSystemPrompt = ref('');
+const botImage = ref(null); // Selected bot image
+const botIcons = ref([]); // List of icons from /botIcons
+const isIconPickerOpen = ref(false); // Modal state
 const previewImage = ref(null);
 const isPublic = ref(false);
-const category = ref('');
+const category = ref([]);
 const uploadedFiles = ref([]);
 const selectedExistingFiles = ref([]);
+import { MyToast } from '@/utils/toast';
+
+
+const categories = ref([
+  "Criminal Law",
+  "Family Law",
+  "Corporate Law",
+  "Intellectual Property",
+  "Tax Law",
+  "Labor Law",
+]);
+
+// Handle category selection (limit to 3)
+const handleCategoryChange = () => {
+  if (category.value.length > 3) {
+    category.value.pop(); // Remove the latest addition if it exceeds the limit
+    MyToast.error("Only Possible to Select 3 categories");
+  }
+};
+
+const fetchIcons = () => {
+  // Assuming the icons are named in a predictable way, e.g., icon1.png, icon2.png, ...
+  const iconCount = 2;
+  const basePath = '/botIcons/';
+
+  botIcons.value = Array.from({ length: iconCount }, (_, i) => `${basePath}bot${i + 1}.png`);
+};
+
+
+const openIconPicker = () => {
+  isIconPickerOpen.value = true;
+};
+
+const closeIconPicker = () => {
+  isIconPickerOpen.value = false;
+};
+
+const selectIcon = (icon) => {
+  botImage.value = icon;
+  closeIconPicker();
+};
+
+onMounted(() => {
+  fetchIcons();
+});
+
+
 
 // Mock existing files (replace with API call)
 const existingFiles = ref([
