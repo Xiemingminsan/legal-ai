@@ -5,9 +5,24 @@ const axios = require('axios');
 const ChatHistory = require('../models/ChatHistory');
 router.post('/ask-ai', authMiddleware, async (req, res) => {
     try {
-      const { query, conversationId, language } = req.body;
+      const { query, conversationId, language, botId } = req.body;
       const userId = req.user.userId;
-  
+      
+      let botContext = '';
+      if (botId) {
+        const bot = await Bot.findById(botId).populate('documents');
+      if (!bot) {
+        return res.status(404).json({ msg: 'Bot not found' });
+        }
+
+      // Add bot's system prompt to context
+      botContext = bot.systemPrompt + '\n\n';
+      
+      // Filter search to only include bot's documents
+      const documentIds = bot.documents.map(doc => doc._id);
+      // You'll need to modify your search function to filter by documentIds
+    }
+
       if (!query || !query.trim()) {
         return res.status(400).json({ msg: 'Query cannot be empty' });
       }
@@ -52,7 +67,7 @@ router.post('/ask-ai', authMiddleware, async (req, res) => {
         const aiServiceUrl = process.env.AI_SERVICE_URL || 'http://localhost:8000';
         const aiResponse = await axios.post(
           `${aiServiceUrl}/qa`,
-          new URLSearchParams({ language, query, context, top_k: 10 }),
+          new URLSearchParams({ language, query, context: botContext + context, botId, top_k: 10 }),
           { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
         );
   
