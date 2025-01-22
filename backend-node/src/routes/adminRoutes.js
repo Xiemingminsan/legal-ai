@@ -5,9 +5,8 @@ const axios = require("axios");
 const os = require("os");
 const si = require("systeminformation");
 const ChatHistory = require("../models/ChatHistory");
+const User = require("../models/User");
 const SystemPrompt = require("../models/SystemPrompt");
-
-
 
 router.get("/getServerHealth", async (req, res) => {
   try {
@@ -69,6 +68,45 @@ router.post("/updateSystemPrompt", async (req, res) => {
   } catch (error) {
     console.error("Error updating system prompt:", error.message);
     res.status(500).json({ msg: "Server error updating system prompt" });
+  }
+});
+
+router.get("/getAllUsers", async (req, res) => {
+  try {
+    // Fetch all users from the database
+    const users = await User.find();
+
+    // Check if users are found
+    if (!users || users.length === 0) {
+      return res.status(404).json({ msg: "No users found" });
+    }
+
+    // Return the list of users
+    res.json(users);
+  } catch (error) {
+    console.error("Error fetching users:", error.message);
+    res.status(500).json({ msg: "Server error fetching users" });
+  }
+});
+
+router.post("/suspendUser", async (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId) {
+      return res.status(400).json({ msg: "User ID is required" });
+    }
+
+    // // Find and delete the user by ID
+    // const deletedUser = await User.findByIdAndDelete(userId);
+
+    // if (!deletedUser) {
+    //   return res.status(404).json({ msg: "User not found" });
+    // }
+
+    res.json({ msg: "Implement Mee Backend /suspendUser" });
+  } catch (error) {
+    console.error("Error Suspending user:", error.message);
+    res.status(500).json({ msg: "Server error Suspending user" });
   }
 });
 
