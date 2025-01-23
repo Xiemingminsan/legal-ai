@@ -32,7 +32,7 @@
                 <!-- Type -->
                 <div class="flex items-center space-x-2">
                   <span class="font-medium text-gray-700 dark:text-gray-300">Type:</span>
-                  <span :class="bot.type == 'custom' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'"
+                  <span :class="bot.type == 'public' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'"
                     class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
                     {{ bot.type }}
                   </span>

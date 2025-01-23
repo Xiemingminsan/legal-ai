@@ -37,7 +37,6 @@ router.post("/add", authMiddleware, upload.array("files"), async (req, res) => {
       icon,
       visibility,
       systemPrompt,
-      type,
       documentIds,
       categories,
     } = req.body;
@@ -45,6 +44,15 @@ router.post("/add", authMiddleware, upload.array("files"), async (req, res) => {
 
     if (!name || !description || !req.files?.length) {
       return res.status(400).json({ msg: "Missing required fields" });
+    }
+    let type;
+
+    if (visibility === "private") {
+      type = "private";
+    } else if (visibility === "public" && req.user.role === "admin") {
+      type = "primary";
+    } else {
+      type = "public";
     }
 
     // Create bot
@@ -124,19 +132,18 @@ router.get("/", authMiddleware, async (req, res) => {
 
     // Get public custom bots
     const publicCustomBots = await Bot.find({
-      type: "custom",
       visibility: "public",
     }).populate("documents");
 
     // Get user's private bots
     const privateBots = await Bot.find({
       creator: req.user.userId,
-      type: "private",
+      visibility: "private",
     }).populate("documents");
 
     res.json({
       primary: primaryBots,
-      custom: publicCustomBots,
+      public: publicCustomBots,
       private: privateBots,
     });
   } catch (error) {
