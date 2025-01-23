@@ -51,6 +51,12 @@
 <script setup>
 import { ref } from 'vue';
 import DarkModeToggle from '@/components/Basics/DarkModeToggle.vue';
+import { useRouter } from "vue-router";
+import { useAuthStore } from "@/stores/authStore";
+
+const authStore = useAuthStore();
+
+const router = useRouter();
 
 const menuItems = ref([
   { name: 'Dashboard', icon: 'ri-dashboard-line', href: '/admin/dashboard' },
@@ -61,12 +67,10 @@ const menuItems = ref([
 ]);
 
 const logout = () => {
-  // Implement logout logic here
-  console.log('Logging out...');
+  authStore.logout();
+  router.push("/signin");
 };
-
 const isActive = (href) => {
   return window.location.pathname === href; // Checks if the current route matches the href
 };
 </script>
-
