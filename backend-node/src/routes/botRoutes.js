@@ -260,4 +260,15 @@ router.delete("/:botId", authMiddleware, async (req, res) => {
   }
 });
 
+router.get('/bots/:id/documents', authMiddleware, async (req, res) => {
+  try {
+      const bot = await Bot.findById(req.params.id)
+                          .select('documents')
+                          .populate('documents', 'id');
+      res.json({ documents: bot?.documents || [] });
+  } catch (error) {
+      res.status(500).json({ msg: "Error fetching bot documents" });
+  }
+})
+
 module.exports = router;

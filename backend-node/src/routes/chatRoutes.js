@@ -3,47 +3,48 @@ const router = express.Router();
 const authMiddleware = require("../middlewares/authMiddleware");
 const axios = require("axios");
 const ChatHistory = require("../models/ChatHistory");
+const Bot = require("../models/Bot");
+const mongoose = require('mongoose');
+const { Types } = mongoose;
+
 router.post("/ask-ai", authMiddleware, async (req, res) => {
   try {
-    const { query, conversationId, language, botId } = req.body;
+    const { query, conversationId, language } = req.body;
     const userId = req.user.userId;
-
-    let botContext = "";
-    if (botId) {
-      const bot = await Bot.findById(botId).populate("documents");
-      if (!bot) {
-        return res.status(404).json({ msg: "Bot not found" });
-      }
-
-      // Add bot's system prompt to context
-      botContext = bot.systemPrompt + "\n\n";
-
-      // Filter search to only include bot's documents
-      const documentIds = bot.documents.map((doc) => doc._id);
-      // You'll need to modify your search function to filter by documentIds
-    }
-
-    if (!query || !query.trim()) {
+    
+    if (!query) {
       return res.status(400).json({ msg: "Query cannot be empty" });
     }
-
-    // Retrieve or create conversation
-    let conversation = conversationId
-      ? await ChatHistory.findById(conversationId)
-      : new ChatHistory({ userId, conversation: [], summary: "", chunksUsed: [] });
-
-    if (!conversation) {
-      return res.status(404).json({ msg: "Conversation not found." });
+    
+    // Initialize conversation
+    let conversation;
+    
+    if (conversationId) {
+      conversation = await ChatHistory.findOne({ _id: conversationId, userId });
+      if (!conversation) {
+        return res.status(404).json({ msg: "Conversation not found" });
+      }
+    } else {
+      // Create new conversation if no conversationId provided
+      conversation = new ChatHistory({
+        userId,
+        conversation: [],
+        chunksUsed: [],
+        summary: ""
+      });
     }
-    if (conversation.userId.toString() !== userId) {
-      return res
-        .status(403)
-        .json({ msg: "You are not authorized to access this conversation." });
+    
+    // Find bot and verify it exists
+    const bot = await Bot.findById(conversation.botId).populate("documents");
+    if (!bot) {
+      return res.status(404).json({ msg: "Bot not found" });
     }
-
+    
+    const botContext = bot.systemPrompt ? bot.systemPrompt + "\n\n" : "";
+    
     // Add user query to the conversation
     conversation.conversation.push({ role: "user", text: query });
-
+    
     // Update summary if needed
     if (conversation.conversation.length % 10 === 0) {
       try {
@@ -57,67 +58,81 @@ router.post("/ask-ai", authMiddleware, async (req, res) => {
           }),
           { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
         );
-        conversation.summary = summaryResponse.data.summary || conversation.summary;
+        
+        if (summaryResponse.data && summaryResponse.data.summary) {
+          conversation.summary = summaryResponse.data.summary;
+        }
       } catch (error) {
         console.error("Error summarizing conversation:", error.message);
+        // Continue execution even if summary fails
       }
     }
-
-    // Build context: summary + last 5 messages
-    const context =
-      (conversation.summary ? conversation.summary + "\n" : "") +
-      conversation.conversation
+    
+    // Build context: summary + last messages + recent chunks
+    const context = [
+      conversation.summary,
+      ...conversation.conversation
         .slice(-20)
-        .map((msg) => `${msg.role}: ${msg.text}`)
-        .join("\n") +
-      conversation.chunksUsed
+        .map((msg) => `${msg.role}: ${msg.text}`),
+      ...conversation.chunksUsed
         .slice(-5)
-        .map((chunk) => `Chunk from doc ${chunk.doc_id}:\n${chunk.text}\n`);
-
+        .map((chunk) => `Chunk from doc ${chunk.doc_id}:\n${chunk.text}`)
+    ].filter(Boolean).join("\n");
+    
     // Call AI service
     try {
       const aiServiceUrl = process.env.AI_SERVICE_URL || "http://localhost:8000";
       const aiResponse = await axios.post(
         `${aiServiceUrl}/qa`,
         new URLSearchParams({
-          language,
+          language: language || "en",
           query,
-          context: botContext + context,
-          botId,
-          top_k: 10,
+          context,
+          bot_id: bot._id.toString(),
+          top_k: "10"
         }),
         { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
       );
-
+      
+      if (!aiResponse.data || !aiResponse.data.answer) {
+        throw new Error("Invalid response from AI service");
+      }
+      
       const aiAnswer = aiResponse.data.answer;
       const usedChunks = aiResponse.data.chunksUsed || [];
-      conversation.conversation.push({ role: "assistant", text: aiAnswer });
-
-      // Append used chunks to chunksUsed and maintain maximum of 50
+      
+      conversation.conversation.push({ role: "bot", text: aiAnswer });
+      
+      // Update chunks used
       if (usedChunks.length > 0) {
-        conversation.chunksUsed = [...conversation.chunksUsed, ...usedChunks];
-
-        // Ensure only the last 50 chunks are kept
-        if (conversation.chunksUsed.length > 50) {
-          conversation.chunksUsed = conversation.chunksUsed.slice(-50);
-        }
+        conversation.chunksUsed = [
+          ...conversation.chunksUsed,
+          ...usedChunks
+        ].slice(-50); // Keep only last 50 chunks
       }
+      
+      // Save the conversation
+      await conversation.save();
+      
+      return res.json({
+        conversationId: conversation._id,
+        conversation: conversation.conversation,
+      });
+      
     } catch (error) {
       console.error("Error calling AI service:", error.message);
-      return res.status(500).json({ msg: "Failed to communicate with AI service." });
+      return res.status(500).json({ 
+        msg: "Failed to communicate with AI service.",
+        error: error.message 
+      });
     }
-
-    // Save the conversation (once at the end)
-    await conversation.save();
-
-    // Return the updated conversation
-    res.json({
-      conversationId: conversation._id,
-      conversation: conversation.conversation,
-    });
+    
   } catch (error) {
     console.error("Error in /ask-ai:", error.message);
-    res.status(500).json({ msg: "Server error in AI communication" });
+    return res.status(500).json({ 
+      msg: "Server error in AI communication",
+      error: error.message 
+    });
   }
 });
 
@@ -150,17 +165,34 @@ router.get("/history", authMiddleware, async (req, res) => {
 
 router.post("/new", authMiddleware, async (req, res) => {
   try {
+    const { botId } = req.body;
     const userId = req.user.userId;
+
+    // Verify bot exists
+    const bot = await Bot.findById(botId);
+    if (!bot) {
+      return res.status(404).json({ msg: "Bot not found" });
+    }
+
     const conversation = new ChatHistory({
       userId,
+      botId,
       conversation: [],
-      summary: "",
+      summary: ""
     });
+
     await conversation.save();
-    res.json({ conversationId: conversation._id });
+    res.json({ 
+      conversationId: conversation._id,
+      bot: {
+        id: bot._id,
+        name: bot.name,
+        icon: bot.icon
+      }
+    });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ msg: "Failed to create a new conversation" });
+    console.error("Error creating conversation:", error);
+    res.status(500).json({ msg: "Failed to create conversation" });
   }
 });
 
@@ -177,6 +209,118 @@ router.post("/:conversationId/save-message", authMiddleware, async (req, res) =>
   } catch (error) {
     console.error(error);
     res.status(500).json({ msg: "Failed to save message" });
+  }
+});
+
+router.get("/conversations", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    const conversations = await ChatHistory.aggregate([
+      {
+        $match: {
+          userId: new Types.ObjectId(userId) // Proper ObjectId creation
+        }
+      },
+      { $sort: { createdAt: -1 } },
+      {
+        $lookup: {
+          from: "bots",
+          localField: "botId",
+          foreignField: "_id",
+          as: "botDetails"
+        }
+      },
+      { $unwind: "$botDetails" },
+      {
+        $addFields: {
+          lastMessage: {
+            $ifNull: [
+              { $arrayElemAt: ["$conversation", -1] },
+              { role: null, text: null }
+            ]
+          }
+        }
+      },
+      {
+        $project: {
+          bot: {
+            botId: "$botDetails._id",
+            name: "$botDetails.name",
+            icon: "$botDetails.icon"
+          },
+          conversationId: "$_id",
+          lastTextSentByUser: {
+            $cond: {
+              if: { $eq: ["$lastMessage.role", "user"] },
+              then: "$lastMessage.text",
+              else: {
+                $let: {
+                  vars: {
+                    filtered: {
+                      $filter: {
+                        input: "$conversation",
+                        cond: { $eq: ["$$this.role", "user"] }
+                      }
+                    }
+                  },
+                  in: {
+                    $ifNull: [
+                      { $arrayElemAt: ["$$filtered.text", -1] },
+                      null
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          timeStamp: "$createdAt"
+        }
+      }
+    ]);
+
+    res.json(conversations);
+  } catch (error) {
+    console.error("Aggregation error:", error);
+    res.status(500).json({ msg: "Server error fetching conversations" });
+  }
+});
+
+router.get("/conversation/:conversationId", authMiddleware, async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const userId = req.user.userId;
+
+    const conversation = await ChatHistory.findOne({ 
+      _id: conversationId,
+      userId: userId 
+    }).populate({
+      path: 'botId',
+      select: 'name icon systemPrompt'
+    });
+
+    if (!conversation) {
+      return res.status(404).json({ msg: "Conversation not found" });
+    }
+
+    res.json({
+      conversationId: conversation._id,
+      bot: {
+        id: conversation.botId._id,
+        name: conversation.botId.name,
+        icon: conversation.botId.icon
+      },
+      messages: conversation.conversation.map(msg => ({
+        role: msg.role,
+        text: msg.text,
+        timestamp: msg._id.getTimestamp() // MongoDB ObjectIds contain a timestamp
+      })),
+      createdAt: conversation.createdAt
+    });
+
+  } catch (error) {
+    console.error("Error fetching conversation:", error);
+    res.status(500).json({ msg: "Server error fetching conversation" });
   }
 });
 

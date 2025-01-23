@@ -3573,5 +3573,49 @@
     "category": "criminal",
     "language": "en",
     "status": "completed"
+  },
+  {
+    "doc_id": "67916552d25b811468d96655",
+    "title": "1737581906924-558355681.pdf",
+    "text": "Open book Chapter review (17 questions) - Quiz One\n1. A security analyst is investigating some users who are being redirected to a fake website that\nresembles www.comptia.org. The following output was found on the naming server of the \norganization:\nWhich of the following attacks has taken place? A. Domain reputation\nB. Domain hijacking\nC. Disassociation\nD. DNS poisoning\n2. A forensics investigator is examining a number of unauthorized payments that were reported on the\ncompany's website. Some unusual log entries show users received an email for an unwanted mailing\nlist and clicked on a link to attempt to unsubscribe. One of the users reported the email to the\nphishing team, and the forwarded email revealed the link to be:\n<a href=\"https://www.company.com/payto.do? routing=00001111&acct=22223334&amount=250\">Click here to unsubscribe</a>\nWhich of the following will the forensics investigator MOST likely determine has occurred? A. SQL injection\nB. Broken authentication\nC. XSS\nD. XSRF\n3. A company is providing security awareness training regarding the importance of not forwarding\nsocial media messages from unverified sources. Which of the following risks would this training\nhelp to prevent? A. Hoaxes\nB. SPIMs\nC. Identity fraud\nD. Credential harvesting\n4. A security analyst is receiving numerous alerts reporting that the response time of an internet-facing\napplication has been degraded. However, the internal network performance was not degraded. Which of the following MOST likely explains this behavior? A. DNS poisoning\nB. MAC flooding\nC. DDoS attack\nD. ARP poisoning\n5. Which of the following is the MOST effective control against zero-day vulnerabilities? A. Network segmentation\nB. Patch management\nC. Intrusion prevention system\nD. Multiple vulnerability scanners\n6. An organization discovered files with proprietary financial data have been deleted. The files have been\nrecovered from backup, but every time the Chief Financial Officer logs in to the file server, the same \nfiles are deleted again. No other users are experiencing this issue. Which of the following types of \nmalware is MOST likely causing this behavior? A. Logic bomb\nB. Cryptomalware\nC. Spyware\nD. Remote access Trojan\n7. Certain users are reporting their accounts are being used to send unauthorized emails and conduct\nsuspicious activities. After further investigation, a security analyst notices the following:\n✑ All users share workstations throughout the day. ✑ Endpoint protection was disabled on several workstations throughout the network. ✑ Travel times on logins from the affected users are impossible. ✑ Sensitive data is being uploaded to external sites.",
+    "index": 325,
+    "uploadDate": "2025-01-22T21:38:27.628709",
+    "docScope": "public",
+    "category": "criminal",
+    "language": "en",
+    "status": "completed"
+  },
+  {
+    "doc_id": "67916552d25b811468d96655",
+    "title": "1737581906924-558355681.pdf",
+    "text": "All user account passwords were forced to be reset and the issue continued. Which of the following attacks \nis being used to compromise the user accounts? A. Brute-force\nB. Keylogger\nC. Dictionary\nD. Rainbow\n8. A security analyst is designing the appropriate controls to limit unauthorized access to a physical site. The analyst has a directive to utilize the lowest possible budget. Which of the following would BEST \nmeet the requirements? A. Preventive controls\nB. Compensating controls\nC. Deterrent controls\nD. Detective controls\n9. A security analyst is investigating suspicious traffic on the web server located at IP address 10.10.1.1. A search of the WAF logs reveals the following output:\nWhich of the following is MOST likely occurring? A. XSS attack\nB. SQLi attack\nC. Replay attack\nD. XSRF attack\n10. A DBA reports that several production server hard drives were wiped over the weekend. The DBA also\nreports that several Linux servers were unavailable due to system files being deleted unexpectedly. A\nsecurity analyst verified that software was configured to delete data deliberately from those servers. No backdoors to any servers were found. Which of the following attacks was MOST likely used to cause \nthe data loss? A. Logic bomb\nB. Ransomware\nC. Fileless virus\nD. Remote access Trojans\nE. Rootkit\n11. A technician enables full disk encryption on a laptop that will be taken on a business trip. Which of\nthe following does this process BEST protect? A. Data in transit\nB. Data in processing\nC. Data at rest\nD. Data tokenization\nAnswer questions from 12 to 14 based on the following scenario. instruction: label uppercase letters in ascending order for attack identified column and assign: lower case \nletters in ascending order for Best preventive column so your answer should something like (A:c, B: a etc. 12. Select the appropriate attack and remediation from each drop-down list to label the corresponding\nattack with its remediation. 13. Select the appropriate attack and remediation from each drop-down list to label the corresponding\nattack with its remediation. 14. Select the appropriate attack and remediation from each drop-down list to label the corresponding\nattack with its remediation. 15. A user's account is constantly being locked out. Upon further review, a security analyst found the\nfollowing in the SIEM:\nWhich of the following describes what is occurring? A. An attacker is utilizing a password-spraying attack against the account. B. An attacker is utilizing a dictionary attack against the account.",
+    "index": 326,
+    "uploadDate": "2025-01-22T21:38:27.628709",
+    "docScope": "public",
+    "category": "criminal",
+    "language": "en",
+    "status": "completed"
+  },
+  {
+    "doc_id": "67916552d25b811468d96655",
+    "title": "1737581906924-558355681.pdf",
+    "text": "C. An attacker is utilizing a brute-force attack against the account. D. An attacker is utilizing a rainbow table attack against the account. 16. An analyst receives multiple alerts for beaconing activity for a host on the network. After analyzing\nthe activity, the analyst observes the following activity:\n* A user enters hilcoe.net into a web browser. * The website that appears is not the hilcoe.net site. * The website is a malicious site from the attacker. * Users in a different office are not having this issue. Which of the following types of attacks was observed? A. On-path attack\nB. DNS poisoning\nC. Locator (URL) redirection\nD. Domain hijacking\n17. A security administrator is analyzing the corporate wireless network. The network only has two\naccess points running on channels 1 and 11. While using airodump-ng, the administrator notices\nother access points are running with the same corporate ESSID on all available channels and with\nthe same BSSID of one of the legitimate access points. Which of the following attacks is happening\non the corporate network? A. On-path\nB. Evil twin\nC. Jamming\nD. Rogue access point\nE. Disassociation",
+    "index": 327,
+    "uploadDate": "2025-01-22T21:38:27.628709",
+    "docScope": "public",
+    "category": "criminal",
+    "language": "en",
+    "status": "completed"
+  },
+  {
+    "doc_id": "67916554d25b811468d96658",
+    "title": "1737581906931-873558227.pdf",
+    "text": "Christan\nManually configured device\nConfigured on January 21, 2025\nDevice ID\n7e3834f1-ec4e-4bcc-ad4e-b4412ad62558\nSecret Key\nQ7IoeII@ROr1@SjnJyHMrqBgR",
+    "index": 328,
+    "uploadDate": "2025-01-22T21:38:28.393437",
+    "docScope": "public",
+    "category": "criminal",
+    "language": "en",
+    "status": "completed"
   }
 ]
