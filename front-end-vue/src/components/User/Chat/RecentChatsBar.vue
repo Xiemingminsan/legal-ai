@@ -2,31 +2,62 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import RecentChatBox from '@/components/User/Chat/RecentChatBox.vue';
 import ChatArea from '@/components/User/Chat/ChatArea.vue';
+import { useUserStore } from '@/stores/userStore';
+import { MyToast } from '@/utils/toast';
+import ErrorRetryComp from '@/components/Basics/ErrorRetryComp.vue';
+import { useRoute } from 'vue-router';
 
 
-const sampleChats = [
-  {
-    id: '1',
-    botName: 'Legal Advisor',
-    avatar: '/assets/legal-advisor-avatar.png',
-    lastMessage: 'Here’s a summary of your legal rights...',
-    timestamp: '10:30 AM',
-  },
-  {
-    id: '2',
-    botName: 'Contract Assistant',
-    avatar: '/assets/contract-assistant-avatar.png',
-    lastMessage: 'I’ve reviewed the contract and found...',
-    timestamp: 'Yesterday',
-  },
-  {
-    id: '3',
-    botName: 'Case Law Bot',
-    avatar: '/assets/case-law-bot-avatar.png',
-    lastMessage: 'Based on similar cases, I recommend...',
-    timestamp: 'Monday',
-  },
-];
+const route = useRoute();
+
+const userStore = useUserStore();
+
+const isLoading = ref(false);
+const error = ref(null);
+const recentChats = ref([])
+
+
+defineProps({
+  conversationId: {
+    type: String,
+    default: null
+  }
+});
+
+
+const getRecentChats = async () => {
+  isLoading.value = true;
+  error.value = null; // Reset the error before the request
+
+  const response = await userStore.getRecentChats();
+  isLoading.value = false;
+
+  if (response.error) {
+    error.value = response.error; // Set the error message
+    MyToast.error(response.error); // Optionally show a toast message
+    return;
+  }
+  recentChats.value = response;
+};
+
+
+onMounted(async () => {
+  await getRecentChats();
+
+  // If a conversationId is provided via query, find the corresponding chat
+  const conversationIdFromQuery = route.query.conversationId;
+
+  if (conversationIdFromQuery) {
+    const chat = recentChats.value.find(chat => chat._id === conversationIdFromQuery);
+    if (chat) {
+      selectedChat.value = chat; // Set the selected chat
+    } else {
+      MyToast.error("Chat Not Found")
+    }
+  }
+});
+
+
 
 const selectedChat = ref(null);
 const isMobileView = ref(window.innerWidth < 768);
@@ -44,6 +75,7 @@ onUnmounted(() => {
 });
 
 const onSelectChat = (chat) => {
+  console.log("Chat Selected")
   selectedChat.value = chat;
 };
 
@@ -53,12 +85,25 @@ const onBack = () => {
 </script>
 
 <template>
+
+
   <div class="flex h-screen bg-gray-100 dark:bg-gray-900">
     <div :class="[
       isMobileView && selectedChat ? 'hidden' : 'w-full md:w-1/3 lg:w-1/4',
       'bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700',
     ]">
-      <RecentChatBox :chats="sampleChats" @selectChat="onSelectChat" />
+      <!-- Loading state -->
+      <div v-if="isLoading" class="flex justify-center items-center mt-32">
+        <div class="animate-spin border-t-2 border-blue-600 border-solid rounded-full w-8 h-8"></div>
+      </div>
+
+      <!-- Error state -->
+      <div v-else-if="error" class="h-min-full">
+        <ErrorRetryComp :errorMessage="error" :onRetry="getRecentChats" />
+      </div>
+
+
+      <RecentChatBox v-else :chats="recentChats" @selectChat="onSelectChat" />
     </div>
     <div :class="[
       isMobileView && !selectedChat ? 'hidden' : 'w-full md:w-2/3 lg:w-3/4',

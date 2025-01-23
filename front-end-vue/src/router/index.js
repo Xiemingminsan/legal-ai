@@ -16,6 +16,7 @@ import AdminBotsListing from '@/Views/Admin/AdminBotsListing.vue'
 import AdminBotDetails from '@/Views/Admin/AdminBotDetails.vue'
 import CreateNewBot from '@/Views/Admin/CreateNewBot.vue'
 import AdminSettings from '@/Views/Admin/AdminSettings.vue'
+import CreateBotUser from '@/Views/Users/CreateBotUser.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -30,8 +31,13 @@ const router = createRouter({
       children: [
         { path: 'home', component: Home },
         { path: 'myaccount', component: MyAccount },
+        { path: 'createBot', component: CreateBotUser },
         { path: 'explore', component: Explore },
-        { path: 'chats', component: RecentChatsBar },
+        {
+          path: 'chats',
+          component: RecentChatsBar,
+          props: (route) => ({ conversationId: route.query.conversationId }),
+        },
       ],
     },
 
