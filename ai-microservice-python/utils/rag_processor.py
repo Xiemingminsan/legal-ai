@@ -341,11 +341,12 @@ class RAGProcessor:
             raise
 
     async def search(
-    self,
-    query: str,
-    top_k: int = 5,
-    semantic_weight: float = 0.5
-) -> List[Dict[str, Any]]:
+        self,
+        query: str,
+        top_k: int = 5,
+        semantic_weight: float = 0.5,
+        bot_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
         """
         Hybrid search combining BM25 and semantic search with smart scoring.
         Ensures all chunks are considered regardless of top_k value.
@@ -359,6 +360,14 @@ class RAGProcessor:
             if not self.chunks_metadata:
                 logger.warning("Chunks metadata is empty. No data to search.")
                 return []
+            bot_document_ids = []
+            if bot_id:
+                try:
+                    bot_document_ids = await self.get_bot_documents(bot_id)
+                    logger.info(f"Filtering for bot {bot_id} with {len(bot_document_ids)} documents")
+                except Exception as e:
+                    logger.error(f"Failed to fetch bot documents: {e}")
+                    bot_document_ids = []
 
             # Clean query
             cleaned_query = await self._clean_text(query)
@@ -427,6 +436,15 @@ class RAGProcessor:
         except Exception as e:
             logger.error("Error during search:\n" + traceback.format_exc())
             raise
+
+    async def get_bot_documents(self, bot_id: str) -> list:
+        """Fetch bot's documents from Node.js API"""
+        NODE_API = os.getenv("NODE_API_URL", "http://localhost:5000")
+        response = requests.get(
+            f"{NODE_API}/api/bots/{bot_id}/documents",
+            headers={"Authorization": os.getenv("API_KEY")}
+        )
+        return response.json().get("documents", [])
 
     def _calculate_boost(self, query: str, chunk: ChunkMetadata) -> float:
         """Calculate boost factor based on special matches."""

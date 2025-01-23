@@ -11,7 +11,6 @@ from typing import Any, List, Dict, Optional
 import traceback
 
 from jinja2 import BaseLoader
-from googletrans import Translator
 
 import requests
 
@@ -30,6 +29,9 @@ from utils.rag_processor import ChunkMetadata, RAGProcessor
 from utils.query_preprocessor import QueryPreprocessor
 from gemini_helper import call_gemini_api
 from summary import summarize_with_gemini
+
+from googletrans import Translator
+translator = ConcurrentTranslator()
 
 # Load environment variables
 load_dotenv()
@@ -402,13 +404,6 @@ async def search_similar_chunks(
         if not global_state.documents_store or global_state.rag_processor.index.ntotal == 0:
             return {"results": []}
         
-        if bot_id:
-            # Get bot's document IDs from MongoDB
-            # Filter global_state.documents_store to only include those documents
-            filtered_docs = [doc for doc in global_state.documents_store if doc["doc_id"] in bot_document_ids]
-        else:
-            filtered_docs = global_state.documents_store
-        
         # Perform hybrid search
         if language == "en":
             ab=QueryPreprocessor()
@@ -422,7 +417,8 @@ async def search_similar_chunks(
         raw_results = await global_state.rag_processor.search(
             query=query,
             top_k=top_k,
-            semantic_weight=semantic_weight
+            semantic_weight=semantic_weight,
+            bot_id=bot_id  # Pass bot_id here
         )
 
         # Format results with document metadata
@@ -473,9 +469,6 @@ async def get_document_status(doc_id: str):
         logger.error(f"Error getting document status: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-
-translator = ConcurrentTranslator()
-
 async def translate_to_english(text: str) -> str:
     """Helper function to translate text to English"""
     if not text:
@@ -509,11 +502,23 @@ def translate_english_to_amharic(text):
         return f"Error: {response.status_code}"
 
 @app.post("/qa")
-async def rag_qa(query: str = Form(...), context: str = Form(...), top_k: int = Form(3), language: Optional[str] = Form("en")):
+async def rag_qa(
+    query: str = Form(...), 
+    context: str = Form(...), 
+    bot_id: str = Form(...),  # Add this
+    top_k: int = Form(3), 
+    language: Optional[str] = Form("en")
+):
     try:
-        semantic_weight=0.7
-        retrieval_res = await search_similar_chunks(query, top_k,semantic_weight,)
-        
+        semantic_weight = 0.7
+        # Pass bot_id to search
+        retrieval_res = await search_similar_chunks(
+            query, 
+            top_k,
+            semantic_weight,
+            language=language,
+            bot_id=bot_id  # Pass it here
+        )
         chunks = retrieval_res.get("results", [])
         if not chunks:
             return {"answer": "No documents found or no index built.", "chunksUsed": []}

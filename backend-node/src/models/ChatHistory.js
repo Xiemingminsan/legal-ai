@@ -2,7 +2,7 @@
 const mongoose = require('mongoose');
 
 const ChatMessageSchema = new mongoose.Schema({
-  role: { type: String, enum: ['user', 'assistant'], required: true },
+  role: { type: String, enum: ['user', 'bot'], required: true },
   text: { type: String, required: true },
 });
 
@@ -16,6 +16,10 @@ const ChatHistorySchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
+  },
+  botId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Bot',
   },
   conversation: [ChatMessageSchema], // array of messages
   summary: { type: String, default: '' }, // add summary field
