@@ -3,20 +3,24 @@
     <div class="p-4">
       <div class="flex items-center space-x-4">
         <div class="flex-shrink-0">
-          <img :src="bot.imageUrl || '/bot.png'"  :alt="bot.name" class="h-12 w-12 rounded-full object-cover">
+          <img :src="'/' + bot.icon || '/bot.png'" :alt="bot.name" class="h-12 w-12 rounded-full object-cover">
         </div>
         <div class="flex-1 min-w-0">
-          <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
+          <router-link :to="`/admin/bot/${bot._id}`" class="text-sm font-medium text-gray-900 dark:text-white truncate hover:underline">
             {{ bot.name }}
-          </p>
+          </router-link>
           <p class="text-sm text-gray-500 dark:text-gray-400 truncate">
-            {{ bot.botTypeCategory }}
+            {{ trimmedDescription }}
           </p>
+
         </div>
         <div class="flex-shrink-0">
-          <span :class="bot.isPublic ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
-            {{ bot.isPublic ? 'Public' : 'Private' }}
+          <span :class="bot.visibility === 'public'
+            ? 'bg-green-100 text-green-800'
+            : 'bg-gray-100 text-gray-800'" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
+            {{ bot.visibility }}
           </span>
+
         </div>
       </div>
     </div>
@@ -24,7 +28,8 @@
       <button class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300">
         <i class="ri-chat-3-line mr-1"></i> Chat
       </button>
-      <router-link to="/admin/bot" class="ml-4 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-500 dark:hover:text-gray-300">
+      <router-link :to="`/admin/bot/${bot._id}`"
+        class="ml-4 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-500 dark:hover:text-gray-300">
         <i class="ri-information-line mr-1"></i> Details
       </router-link>
     </div>
@@ -32,11 +37,19 @@
 </template>
 
 <script setup>
-
-defineProps({
+import { computed } from 'vue';
+const props = defineProps({
   bot: {
     type: Object,
     required: true
   }
 });
+
+const trimmedDescription = computed(() =>
+  props.bot.description.length > 100
+    ? props.bot.description.slice(0, 100) + '...'
+    : props.bot.description
+);
+
+console.log(props.bot.icon)
 </script>

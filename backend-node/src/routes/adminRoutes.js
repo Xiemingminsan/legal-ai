@@ -187,14 +187,64 @@ router.get("/getAllBots", async (req, res) => {
     // Fetch all bots from the database
     const bots = await Bot.find();
 
-    // Return the list of bots
+    // Filter bots into primary and user bots
+    const primaryBots = bots.filter((bot) => bot.type === "primary");
+    const userBots = bots.filter((bot) => ["custom", "private"].includes(bot.type));
+
     res.json({
-      primaryBots: bots,
-      userBots: bots,
+      primaryBots,
+      userBots,
     });
   } catch (error) {
     console.error("Error fetching bots:", error.message);
     res.status(500).json({ msg: "Server error fetching bots" });
+  }
+});
+
+router.get("/getBot", async (req, res) => {
+  try {
+    const { botId } = req.query; // Get the botId from the query params
+
+    if (!botId) {
+      return res.status(400).json({ msg: "Bot ID is required" });
+    }
+
+    // Fetch the bot by its ID, populate the related documents and creator
+    const bot = await Bot.findById(botId)
+      .populate("documents") // Populate associated documents
+      .populate("creator", "username email fullname"); // Populate creator with selected fields (username, email)
+
+    if (!bot) {
+      return res.status(404).json({ msg: "Bot not found" });
+    }
+
+    // Return the bot along with populated documents and creator
+    res.json(bot);
+  } catch (error) {
+    console.error("Error fetching bot:", error.message);
+    res.status(500).json({ msg: "Server error fetching bot" });
+  }
+});
+
+router.post("/deleteBot", async (req, res) => {
+  try {
+    const { botId } = req.body; // Get the botId from the query parameters
+
+    if (!botId) {
+      return res.status(400).json({ msg: "Bot ID is required" });
+    }
+    //@todo delte properly
+    // Find and delete the bot by its ID
+    // const deletedBot = await Bot.findByIdAndDelete(botId);
+
+    // if (!deletedBot) {
+    //   return res.status(404).json({ msg: "Bot not found" });
+    // }
+
+    res.json({ msg: "Implement Mee /deletePost" });
+  } catch (error) {
+    console.error("Error deleting bot:", error.message);
+    res.status(500).json({ msg: "Server error deleting bot" });
   }
 });
 

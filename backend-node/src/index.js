@@ -13,8 +13,6 @@ const stemmerRoutes = require('./routes/stemmerRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const botRoutes = require('./routes/botRoutes');
 
-
-
 const app = express();
 
 // Connect to MongoDB

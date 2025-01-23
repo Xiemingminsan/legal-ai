@@ -1,5 +1,14 @@
 <template>
-  <div class="space-y-8">
+
+  <!-- Loading state -->
+  <div v-if="isLoading" class="flex justify-center items-center">
+    <div class="animate-spin border-t-2 border-blue-600 border-solid rounded-full w-8 h-8"></div>
+  </div>
+
+  <!-- Error state -->
+  <ErrorRetryComp v-else-if="error" :errorMessage="error" :onRetry="getServerHealth" />
+  <!-- if Page Loadded -->
+  <div v-else class="space-y-8">
     <!-- Primary Bots Section -->
     <section>
       <div class="flex items-center justify-start gap-5 mb-4">
@@ -37,33 +46,55 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, onMounted, computed } from 'vue';
+import { useAdminStore } from '@/stores/adminStore';
+import { MyToast } from '@/utils/toast';
 import AdminBotListingCard from '@/components/Admin/AdminBotListingCard.vue';
+import ErrorRetryComp from '@/components/Basics/ErrorRetryComp.vue';
 
-// Mock data for primary bots (replace with actual API call)
-const primaryBots = ref([
-  { _id: '1', name: 'Legal Assistant', imageUrl: '', isPublic: true, botTypeCategory: 'Chatbot' },
-  { _id: '2', name: 'Document Analyzer', imageUrl: '', isPublic: true, botTypeCategory: 'AnalysisBot' },
-  { _id: '3', name: 'Case Researcher', imageUrl: '', isPublic: true, botTypeCategory: 'ResearchBot' },
-]);
 
-// Mock data for user bots (replace with actual API call)
-const userBots = ref([
-  { _id: '4', name: 'Contract Review Bot', imageUrl: '', isPublic: false, botTypeCategory: 'ReviewBot' },
-  { _id: '5', name: 'Legal Q&A Assistant', imageUrl: '', isPublic: true, botTypeCategory: 'Chatbot' },
-  { _id: '6', name: 'Case Law Finder', imageUrl: '', isPublic: false, botTypeCategory: 'ResearchBot' },
-  { _id: '7', name: 'Legal Document Generator', imageUrl: '', isPublic: true, botTypeCategory: 'GeneratorBot' },
-  { _id: '8', name: 'Compliance Checker', imageUrl: '', isPublic: false, botTypeCategory: 'ComplianceBot' },
-]);
+const adminStore = useAdminStore();
+
+const isLoading = ref(false);
+const error = ref(null);
+const primaryBots = ref([])
+const userBots = ref([])
+
+
+
+const getAllBots = async () => {
+  isLoading.value = true;
+  error.value = null; // Reset the error before the request
+
+  const response = await adminStore.getAllBots();
+  isLoading.value = false;
+
+  if (response.error) {
+    error.value = response.error; // Set the error message
+    MyToast.error(response.error); // Optionally show a toast message
+    return;
+  }
+  primaryBots.value = response.primaryBots;
+  userBots.value = response.userBots;
+
+};
+
+
+onMounted(() => {
+  getAllBots();
+});
+
+
 
 const searchQuery = ref('');
 
+
 const filteredUserBots = computed(() => {
   if (!searchQuery.value) return userBots.value;
+
   const query = searchQuery.value.toLowerCase();
   return userBots.value.filter(bot =>
-    bot.name.toLowerCase().includes(query) ||
-    bot.botTypeCategory.toLowerCase().includes(query)
+    bot.name?.toLowerCase().includes(query)
   );
 });
 </script>
