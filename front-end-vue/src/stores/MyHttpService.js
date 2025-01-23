@@ -1,6 +1,8 @@
 import { useAuthStore } from '@/stores/authStore'
 
 export default class MyHttpService {
+  static BASE_URL = 'http://localhost:5000/' // Replace with your backend URL
+
   static API_BASE_URL = 'http://localhost:5000/api' // Replace with your backend URL
 
   static loadImage(imageUrl) {

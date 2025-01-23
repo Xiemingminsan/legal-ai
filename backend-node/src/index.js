@@ -11,6 +11,8 @@ const chatRoutes = require('./routes/chatRoutes');
 const docAnalysisRoutes = require('./routes/docAnalysisRoutes');
 const stemmerRoutes = require('./routes/stemmerRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const botRoutes = require('./routes/botRoutes');
+
 
 
 
@@ -39,7 +41,7 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/docAnalysis', docAnalysisRoutes);
 app.use('/api/stemmer', stemmerRoutes);
 app.use('/api/admin', adminRoutes);
-
+app.use('/api/bots', botRoutes);
 
 
 // Catch-all route for unhandled paths

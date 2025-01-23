@@ -1,5 +1,15 @@
 <template>
   <div class="max-w-4xl mx-auto py-8">
+
+    <!-- Wrapper for Loading and Error states -->
+    <div v-if="isLoadingUploadBot"
+      class="absolute inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+      <!-- Loading state -->
+      <div class="animate-spin border-t-2 border-blue-600 border-solid rounded-full w-8 h-8">
+      </div>
+    </div>
+
+
     <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-8">Create New Bot</h1>
 
     <form @submit.prevent="createBot" class="space-y-8">
@@ -19,7 +29,8 @@
               </div>
             </div>
             <div class="flex-1 mt-4 md:mt-0">
-              <label for="botImage" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Bot Image</label>
+              <label for="botImage" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Bot
+                Image</label>
               <div class="mt-1 flex items-center">
                 <span class="inline-block h-12 w-12 rounded-full overflow-hidden bg-gray-100">
                   <img v-if="botImage" :src="botImage" alt="Selected bot image" class="h-full w-full object-cover">
@@ -66,7 +77,8 @@
             </div>
           </div>
           <div>
-            <label for="subSystemPrompt" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Sub System Prompt</label>
+            <label for="subSystemPrompt" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Sub System
+              Prompt</label>
             <div class="mt-1 relative rounded-md shadow-sm">
               <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <i class="ri-robot-line text-gray-400"></i>
@@ -125,29 +137,57 @@
               </button>
             </div>
             <div class="space-y-2">
-              <div class="">
+              <!-- Document Title -->
+              <div>
                 <label :for="'docTitle' + index"
                   class="block text-xs font-medium text-gray-700 dark:text-gray-300">Document Title</label>
                 <input v-model="file.title" :id="'docTitle' + index" type="text" required
                   class="h-10 p-2 mt-1 block w-full rounded-md bg-sky-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm">
               </div>
+
+              <!-- Language -->
               <div>
                 <label :for="'docLang' + index"
                   class="block text-xs font-medium text-gray-700 dark:text-gray-300">Language</label>
                 <select v-model="file.language" :id="'docLang' + index" required
-                  class="h-10 p-2 mt-1 block w-full rounded-md bg-sky-100  border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm">
+                  class="h-10 p-2 mt-1 block w-full rounded-md bg-sky-100 border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm">
                   <option value="en">English</option>
                   <option value="am">Amharic</option>
                 </select>
               </div>
+
+              <!-- Category -->
+              <div>
+                <label :for="'docCategory' + index"
+                  class="block text-xs font-medium text-gray-700 dark:text-gray-300">Category</label>
+                <select v-model="file.category" :id="'docCategory' + index" required
+                  class="h-10 p-2 mt-1 block w-full rounded-md bg-sky-100 border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm">
+                  <option disabled value="">Select Category</option>
+                  <option v-for="category in categories" :key="category" :value="category">
+                    {{ category }}
+                  </option>
+                </select>
+              </div>
+
+              <!-- Public Checkbox -->
+              <div class="flex items-center space-x-2">
+                <input type="checkbox" v-model="file.isPublic" :id="'isPublic' + index"
+                  class="h-4 w-4 text-blue-600 border-gray-300 rounded">
+                <label :for="'isPublic' + index" class="text-xs font-medium text-gray-700 dark:text-gray-300">Make
+                  document public</label>
+                <i class="ri-information-line text-gray-500 dark:text-gray-300"
+                  title="Public documents can be accessed by anyone."></i>
+              </div>
             </div>
           </div>
         </div>
+
+        <!-- File Upload Section -->
         <div class="mt-4">
           <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-400 border-dashed rounded-md">
             <div class="space-y-1 text-center">
-              <div class="flex text-sm  bg-sky-400 rounded-lg p-2 mx-auto px-10 mb-3 text-gray-700 dark:text-white">
-                <label for="fileUpload" class="relative cursor-pointer  rounded-md font-medium">
+              <div class="flex text-sm bg-sky-400 rounded-lg p-2 mx-auto px-10 mb-3 text-gray-700 dark:text-white">
+                <label for="fileUpload" class="relative cursor-pointer rounded-md font-medium">
                   <span>Upload files</span>
                   <i class="ml-2 ri-upload-cloud-2-line mx-auto h-15"></i>
                   <input id="fileUpload" type="file" @change="handleFileUpload" multiple class="sr-only">
@@ -159,23 +199,71 @@
         </div>
       </div>
 
-      <!-- Existing Files Section (if showUploadedFiles is true) -->
-      <div v-if="showUploadedFiles" class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
-        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Select Existing Files</h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div v-for="file in existingFiles" :key="file.id"
-            class="flex items-center space-x-3 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">
-            <input :id="'file' + file.id" v-model="selectedExistingFiles" type="checkbox" :value="file.id"
-              class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-            <label :for="'file' + file.id" class="flex-1 flex items-center space-x-3">
-              <i :class="getFileIcon(file.title)" class="text-gray-400"></i>
-              <span class="text-sm text-gray-900 dark:text-gray-300">{{ file.title }}</span>
-              <span class="text-xs text-gray-500 dark:text-gray-400">{{ file.language === 'en' ? 'English' : 'Amharic'
-                }}</span>
-            </label>
+
+      <!-- Loading state -->
+      <div v-if="isLoading" class="flex justify-center items-center">
+        <div class="animate-spin border-t-2 border-blue-600 border-solid rounded-full w-8 h-8"></div>
+      </div>
+
+      <!-- Error state -->
+      <ErrorRetryComp v-else-if="error" :errorMessage="error" :onRetry="getAllValidDocuments" />
+      <!-- if Page Loadded -->
+      <div v-else>
+        <!-- Existing Files Section (if showUploadedFiles is true) -->
+        <div v-if="showUploadedFiles && availableDocuments.length > 0"
+          class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Select Existing Files</h2>
+            <!-- Search Input -->
+            <div class="flex items-center space-x-2">
+              <input v-model="searchQuery" type="text" placeholder="Search files"
+                class="border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm px-3 py-1.5 bg-gray-100 dark:bg-gray-700 dark:text-white" />
+              <!-- Select/Unselect All Button -->
+              <button @click="toggleSelectAll" class="text-sm text-blue-600 hover:underline">
+                {{ selectAll ? 'Unselect All' : 'Select All' }}
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 overflow-y-auto max-h-[300px]">
+            <div v-for="file in filteredDocuments" :key="file.id"
+              class="flex items-center space-x-3 p-2 rounded-md bg-[#1ddcf91f] dark:bg-[#ffffff0c] hover:bg-gray-100 dark:hover:bg-gray-700">
+              <!-- Checkbox -->
+              <input :id="'file' + file._id" v-model="selectedExistingFiles" type="checkbox" :value="file._id"
+                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+
+              <!-- File Details -->
+              <label :for="'file' + file._id" class="flex-1 flex items-center space-x-3">
+                <!-- File Icon -->
+                <i :class="getFileIcon(file.title)" class="text-gray-400"></i>
+
+                <!-- File Info -->
+                <div>
+                  <span class="text-sm text-gray-900 dark:text-gray-300">{{ file.title }}</span>
+                  <div class="flex items-center space-x-2">
+                    <span class="text-xs text-gray-500 dark:text-gray-400">
+                      {{ file.language === 'en' ? 'English' : 'Amharic' }}
+                    </span>
+                    <!-- File Category -->
+                    <span
+                      class="text-xs bg-gray-200 text-gray-800 px-2 py-0.5 rounded-md dark:bg-gray-600 dark:text-gray-200">
+                      {{ file.category }}
+                    </span>
+                  </div>
+                </div>
+              </label>
+
+              <!-- Download Icon -->
+              <a :href="MyHttpService.BASE_URL + file.filePath" target="_blank" rel="noopener noreferrer"
+                class="text-blue-500 hover:text-blue-700">
+                <i class="ri-download-2-line text-lg"></i>
+              </a>
+            </div>
           </div>
         </div>
+
       </div>
+
 
       <div class="flex justify-end">
         <button type="submit"
@@ -188,15 +276,85 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
+import { useAdminStore } from '@/stores/adminStore';
+import { useUserStore } from '@/stores/userStore';
 
+import { MyToast } from '@/utils/toast';
+import ErrorRetryComp from '@/components/Basics/ErrorRetryComp.vue';
+import MyHttpService from '@/stores/MyHttpService';
+
+const adminStore = useAdminStore();
+const userStore = useUserStore();
 // Props
-const props = defineProps({
+defineProps({
   showUploadedFiles: {
     type: Boolean,
     default: true
   }
 });
+
+
+const isLoading = ref(false);
+const error = ref(null);
+
+const isLoadingUploadBot = ref(false);
+
+const availableDocuments = ref([])
+
+const searchQuery = ref('');
+const selectAll = ref(false);
+
+const filteredDocuments = computed(() => {
+  if (!searchQuery.value.trim()) {
+    return availableDocuments.value;
+  }
+  return availableDocuments.value.filter(file =>
+    file.title.toLowerCase().includes(searchQuery.value.toLowerCase())
+  );
+});
+
+
+
+
+
+const toggleSelectAll = () => {
+  if (selectAll.value) {
+    selectedExistingFiles.value = [];
+  } else {
+    selectedExistingFiles.value = filteredDocuments.value.map(file => file._id);
+  }
+  selectAll.value = !selectAll.value;
+};
+
+
+
+const getAllValidDocuments = async () => {
+  isLoading.value = true;
+  error.value = null; // Reset the error before the request
+
+  const response = await userStore.getAllValidDocuments();
+
+  if (response.error) {
+    error.value = response.error; // Set the error message
+    MyToast.error(response.error); // Optionally show a toast message
+    return;
+  }
+
+  availableDocuments.value = response;
+  isLoading.value = false;
+};
+
+
+
+
+onMounted(() => {
+  getAllValidDocuments();
+});
+
+
+
+
 
 // Reactive state
 const botName = ref('');
@@ -210,7 +368,68 @@ const isPublic = ref(false);
 const category = ref([]);
 const uploadedFiles = ref([]);
 const selectedExistingFiles = ref([]);
-import { MyToast } from '@/utils/toast';
+
+const createBot = async () => {
+  // Create formData to send to backend
+  const formData = new FormData();
+  formData.append('name', botName.value);
+  formData.append('description', botDesc.value);
+  formData.append('visibility', isPublic.value ? 'public' : 'private');
+  if (botImage.value) {
+    formData.append('icon', botImage.value);
+  }
+  formData.append('systemPrompt', subSystemPrompt);
+
+  // @todo remove this, should be handled on the backend
+  formData.append('type', 'custom');
+
+  //-----------------------------------------------------
+  formData.append('category', category.value);
+
+  // Add uploaded files to "files"
+  uploadedFiles.value.forEach((file, index) => {
+    formData.append(`files[${index}]`, file.file);
+  });
+
+  // Add metadata for each file
+  const metadata = uploadedFiles.value.map(file => ({
+    title: file.title,
+    category: file.category,
+    docScope: file.isPublic ? 'public' : 'private',
+    language: file.language,
+  }));
+  formData.append('metadata', JSON.stringify(metadata));
+
+  // Add selected existing document IDs
+  formData.append('documentIds', JSON.stringify(selectedExistingFiles.value));
+
+  // Log formData for debugging
+  console.log('Bot data to be sent:', {
+    name: botName.value,
+    description: botDesc.value,
+    visibility: isPublic.value ? 'public' : 'private',
+    files: uploadedFiles.value.map(f => f.name),
+    metadata,
+    documentIds: selectedExistingFiles.value,
+  });
+
+  // Implement your API call here
+
+  isLoadingUploadBot.value = true;
+  const response = await userStore.createBot(formData);
+
+  if (response.error) {
+    isLoadingUploadBot.value = false;
+    MyToast.error(response.error); // Optionally show a toast message
+    return;
+  }
+  MyToast.success("Bot Created Successfully");
+  isLoadingUploadBot.value = false;
+
+  // Reset form after submission
+  resetForm();
+};
+
 
 
 const categories = ref([
@@ -258,36 +477,18 @@ onMounted(() => {
 
 
 
-// Mock existing files (replace with API call)
-const existingFiles = ref([
-  { id: 1, title: 'Criminal Code.pdf', language: 'en' },
-  { id: 2, title: 'Family Law Guide.docx', language: 'en' },
-  { id: 3, title: 'የወንጀል ህግ.pdf', language: 'am' },
-  { id: 4, title: 'Corporate Governance.txt', language: 'en' },
-]);
-
-// Methods
-const handleImageUpload = (event) => {
-  const file = event.target.files[0];
-  if (file) {
-    botImage.value = file;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      previewImage.value = e.target.result;
-    };
-    reader.readAsDataURL(file);
-  }
-};
-
 const handleFileUpload = (event) => {
   const files = Array.from(event.target.files);
   uploadedFiles.value.push(...files.map(file => ({
     name: file.name,
     file: file,
     title: file.name.split('.').slice(0, -1).join('.'),
-    language: 'en'
+    language: 'en',
+    category: '', // Default empty category
+    isPublic: true, // Default to public
   })));
 };
+
 
 const removeFile = (index) => {
   uploadedFiles.value.splice(index, 1);
@@ -308,34 +509,6 @@ const getFileIcon = (fileName) => {
   }
 };
 
-const createBot = () => {
-  // Here you would typically send the data to your backend API
-  const formData = new FormData();
-  formData.append('name', botName.value);
-  formData.append('description', botDesc.value);
-  formData.append('isPublic', isPublic.value);
-  formData.append('category', category.value);
-  if (botImage.value) {
-    formData.append('image', botImage.value);
-  }
-
-  uploadedFiles.value.forEach((file, index) => {
-    formData.append(`files[${index}]`, file.file);
-    formData.append(`fileTitles[${index}]`, file.title);
-    formData.append(`fileLanguages[${index}]`, file.language);
-  });
-
-  formData.append('selectedExistingFiles', JSON.stringify(selectedExistingFiles.value));
-
-  // Send formData to your API endpoint
-  console.log('Bot data to be sent:', formData);
-  // Implement your API call here
-  // Example: await api.createBot(formData);
-
-  // Reset form after submission
-  resetForm();
-};
-
 const resetForm = () => {
   botName.value = '';
   botDesc.value = '';
@@ -347,7 +520,3 @@ const resetForm = () => {
   selectedExistingFiles.value = [];
 };
 </script>
-
-<style>
-@import 'remixicon/fonts/remixicon.css';
-</style>
