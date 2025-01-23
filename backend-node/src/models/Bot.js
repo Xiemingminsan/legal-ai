@@ -16,7 +16,7 @@ const BotSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['primary', 'custom', 'private'],
+    enum: ['primary', 'public', 'private'],
     required: true
   },
   creator: {

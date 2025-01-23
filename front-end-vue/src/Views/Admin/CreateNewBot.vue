@@ -380,16 +380,13 @@ const createBot = async () => {
   }
   formData.append('systemPrompt', subSystemPrompt);
 
-  // @todo remove this, should be handled on the backend
-  formData.append('type', 'custom');
-
   //-----------------------------------------------------
   formData.append('category', category.value);
 
   // Add uploaded files to "files"
-  uploadedFiles.value.forEach((file, index) => {
-    formData.append(`files[${index}]`, file.file);
-  });
+  uploadedFiles.value.forEach((file) => {
+  formData.append('files', file.file);
+});
 
   // Add metadata for each file
   const metadata = uploadedFiles.value.map(file => ({
