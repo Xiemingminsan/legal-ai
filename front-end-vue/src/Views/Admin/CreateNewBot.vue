@@ -23,7 +23,7 @@
                   <i class="ri-robot-line text-gray-400"></i>
                 </div>
                 <input v-model="botName" type="text" id="botName" required
-                  class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white dark:bg-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                  class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 dark:text-white bg-white dark:bg-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
               </div>
             </div>
             <div class="flex-1 mt-4 md:mt-0">
@@ -71,7 +71,7 @@
                 <i class="ri-file-text-line text-gray-400"></i>
               </div>
               <textarea v-model="botDesc" id="botDesc" rows="3" required
-                class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white dark:bg-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"></textarea>
+                class="block w-full pl-10 pr-3 py-2 border dark:text-white border-gray-300 rounded-md leading-5 bg-white dark:bg-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"></textarea>
             </div>
           </div>
           <div>
@@ -82,7 +82,7 @@
                 <i class="ri-robot-line text-gray-400"></i>
               </div>
               <textarea v-model="subSystemPrompt" id="subSystemPrompt" rows="3" required
-                class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white dark:bg-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"></textarea>
+                class="block w-full pl-10 pr-3 dark:text-white py-2 border border-gray-300 rounded-md leading-5 bg-white dark:bg-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"></textarea>
             </div>
           </div>
           <div class="flex flex-col sm:flex-row sm:items-start sm:gap-6">
