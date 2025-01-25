@@ -2,13 +2,11 @@
   <div class="max-w-4xl mx-auto py-8">
 
     <!-- Wrapper for Loading and Error states -->
-    <div v-if="isLoadingUploadBot"
-      class="absolute inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-      <!-- Loading state -->
-      <div class="animate-spin border-t-2 border-blue-600 border-solid rounded-full w-8 h-8">
-      </div>
+    <div v-if="isLoadingUploadBot" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50"
+      style="height: 100vh;">
+      <!-- Loading spinner -->
+      <div class="animate-spin border-t-2 border-blue-600 border-solid rounded-full w-8 h-8"></div>
     </div>
-
 
     <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-8">Create New Bot</h1>
 
@@ -385,8 +383,8 @@ const createBot = async () => {
 
   // Add uploaded files to "files"
   uploadedFiles.value.forEach((file) => {
-  formData.append('files', file.file);
-});
+    formData.append('files', file.file);
+  });
 
   // Add metadata for each file
   const metadata = uploadedFiles.value.map(file => ({
