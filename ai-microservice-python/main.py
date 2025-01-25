@@ -102,7 +102,7 @@ class GlobalState:
                 for idx, doc in enumerate(self.documents_store):
                     chunk_metadata = ChunkMetadata(
                         doc_id=doc['doc_id'],
-                        bot_id=bot_id,
+                        bot_id=doc['bot_id'],
                         chunk_id=idx,
                         original_text=doc['text'],
                         processed_text=self._clean_text_for_reload(doc['text']),

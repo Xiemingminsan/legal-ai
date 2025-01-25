@@ -362,11 +362,11 @@ class RAGProcessor:
                 return []
 
             # Clean and preprocess query
-            cleaned_query = await self._clean_text(query)
+            
             if self.nlp.meta["lang"] == "en":
-                cleaned_query = self._preprocess_english_query(cleaned_query)
+                cleaned_query = await self._clean_text(query)
             else:
-                cleaned_query = self.stem_text(cleaned_query)
+                cleaned_query = self.stem_text(query)
 
             # Get allowed indices using direct bot_id check
             allowed_indices = [
