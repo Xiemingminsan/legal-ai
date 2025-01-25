@@ -96,6 +96,7 @@ class GlobalState:
                 for idx, doc in enumerate(self.documents_store):
                     chunk_metadata = ChunkMetadata(
                         doc_id=doc['doc_id'],
+                        bot_id=bot_id,
                         chunk_id=idx,
                         original_text=doc['text'],
                         processed_text=self._clean_text_for_reload(doc['text']),
@@ -291,17 +292,22 @@ async def shutdown_event():
 @app.post("/embed_documents")
 async def embed_documents(
     doc_ids: List[str] = Form(...),
+    bot_ids: List[str] = Form(...),
     pdf_paths: List[str] = Form(...),
     doc_scopes: List[str] = Form(...),
     categories: List[str] = Form(...),
     languages: List[str] = Form(["en"])
 ) -> Dict[str, Any]:
-    if len(doc_ids) != len(pdf_paths) or len(pdf_paths) != len(doc_scopes) or len(doc_scopes) != len(categories):
+    if len(doc_ids) != len(bot_ids) or len(bot_ids) != len(pdf_paths):
         raise HTTPException(status_code=400, detail="Mismatched input lengths")
+    
+    print("doc_ids",doc_ids)
+    print("bot_ids",bot_ids)
 
     async def process_single_document(idx: int):
         try:
             doc_id = doc_ids[idx]
+            bot_id = bot_ids[idx]
             pdf_path = pdf_paths[idx]
             doc_scope = doc_scopes[idx]
             category = categories[idx]
@@ -315,7 +321,7 @@ async def embed_documents(
                 raise HTTPException(status_code=400, detail=f"No text extracted from PDF {pdf_path}")
 
             # Process document with RAG system
-            result = await global_state.rag_processor.process_document(doc_id, text, language)
+            result = await global_state.rag_processor.process_document(doc_id, text, language, bot_id)
 
             # Update documents store with new entries
             current_time = datetime.datetime.utcnow().isoformat()
@@ -331,6 +337,7 @@ async def embed_documents(
             for chunk_data in result["chunk_data"]:
                 doc_entry = {
                     "doc_id": doc_id,
+                    "bot_id": bot_id,
                     "title": filename,
                     "text": chunk_data["original_text"],
                     "index": len(global_state.documents_store),
@@ -375,7 +382,6 @@ async def embed_documents(
         "results": successes,
         "errors": errors
     }
-
 
 @app.post("/search")
 async def search_similar_chunks(
@@ -452,54 +458,6 @@ async def search_similar_chunks(
     except Exception as e:
         logger.error(f"Search error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/documents/{doc_id}/status")
-async def get_document_status(doc_id: str):
-    try:
-        doc_chunks = [doc for doc in global_state.documents_store if doc["doc_id"] == doc_id]
-        if not doc_chunks:
-            return {"status": "not_found", "progress": 0}
-
-        # Assume the first chunk's status is representative
-        status = doc_chunks[0].get("status", "processing")
-        progress = 100 if status == "completed" else 0
-        return {"status": status, "progress": progress}
-
-    except Exception as e:
-        logger.error(f"Error getting document status: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-async def translate_to_english(text: str) -> str:
-    """Helper function to translate text to English"""
-    if not text:
-        return ""
-    try:
-        result = await translator.translate_text(text, src='am', dest='en')
-        return result if result else text
-    except Exception as e:
-        logger.error(f"Translation to English failed: {str(e)}")
-        return text
-
-@app.post("/translateE")
-def translate_english_to_amharic(text):
-    api_key = "AIzaSyAERzMwtZUi2ufsJhyeP1tNESr4k_02PSo"
-    base_url = "https://translation.googleapis.com/language/translate/v2"
-    
-    params = {
-        'q': text,
-        'target': 'am',
-        'source': 'en',
-        'key': api_key
-    }
-    
-    response = requests.get(base_url, params=params)
-    
-    if response.status_code == 200:
-        result = response.json()
-        translated_text = result['data']['translations'][0]['translatedText']
-        return translated_text
-    else:
-        return f"Error: {response.status_code}"
 
 @app.post("/qa")
 async def rag_qa(
@@ -601,6 +559,54 @@ async def rag_qa(
     except Exception as e:
         logger.error(f"QA error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/documents/{doc_id}/status")
+async def get_document_status(doc_id: str):
+    try:
+        doc_chunks = [doc for doc in global_state.documents_store if doc["doc_id"] == doc_id]
+        if not doc_chunks:
+            return {"status": "not_found", "progress": 0}
+
+        # Assume the first chunk's status is representative
+        status = doc_chunks[0].get("status", "processing")
+        progress = 100 if status == "completed" else 0
+        return {"status": status, "progress": progress}
+
+    except Exception as e:
+        logger.error(f"Error getting document status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+async def translate_to_english(text: str) -> str:
+    """Helper function to translate text to English"""
+    if not text:
+        return ""
+    try:
+        result = await translator.translate_text(text, src='am', dest='en')
+        return result if result else text
+    except Exception as e:
+        logger.error(f"Translation to English failed: {str(e)}")
+        return text
+
+@app.post("/translateE")
+def translate_english_to_amharic(text):
+    api_key = "AIzaSyAERzMwtZUi2ufsJhyeP1tNESr4k_02PSo"
+    base_url = "https://translation.googleapis.com/language/translate/v2"
+    
+    params = {
+        'q': text,
+        'target': 'am',
+        'source': 'en',
+        'key': api_key
+    }
+    
+    response = requests.get(base_url, params=params)
+    
+    if response.status_code == 200:
+        result = response.json()
+        translated_text = result['data']['translations'][0]['translatedText']
+        return translated_text
+    else:
+        return f"Error: {response.status_code}"
 
 @app.post("/summarize")
 async def summarize(conversationText: str = Form(...)):

@@ -168,4 +168,17 @@ router.post("/changePassword", authMiddleware, async (req, res) => {
   }
 });
 
+// DELETE /api/auth/admin/deleteAllUsers
+router.delete("/deleteAllUsers", authMiddleware, async (req, res) => {
+  try {
+    // Delete all users except the admin making the request
+    await User.deleteMany();
+
+    res.json({ msg: "All users deleted successfully (except the admin)" });
+  } catch (err) {
+    console.error("Error during deletion of all users:", err);
+    res.status(500).json({ msg: "Server error" });
+  }
+});
+
 module.exports = router;

@@ -24,6 +24,7 @@ export const useUserStore = defineStore('userStore', () => {
 
   async function createBot(formData) {
     try {
+      console.log(formData);
       const response = await MyHttpService.post('/bots/add', { useJWT: true, body: formData })
 
       // If response contains error, return that immediately

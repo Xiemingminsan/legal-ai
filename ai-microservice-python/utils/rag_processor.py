@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 class ChunkMetadata:
     """Metadata for each chunk including original text and search-related info."""
     doc_id: str
+    bot_id: str
     chunk_id: int
     original_text: str
     processed_text: str
@@ -99,7 +100,7 @@ class RAGProcessor:
             self.bm25 = BM25Okapi([["placeholder"]])  # Fallback
 
 
-    async def process_document(self, doc_id: str, text: str, language: str) -> Dict[str, Any]:
+    async def process_document(self, doc_id: str, text: str, language: str, bot_id: str) -> Dict[str, Any]:
         """Process a document asynchronously with smart chunking and parallel processing."""
         try:
             # Generate chunks with proper boundaries
@@ -107,7 +108,7 @@ class RAGProcessor:
             logger.info(f"Generated {len(chunks)} chunks for document {doc_id}")
 
             # Process chunks in parallel
-            chunk_data = await self._process_chunks(doc_id, chunks, language)
+            chunk_data = await self._process_chunks(doc_id, bot_id, chunks, language)
             
             # Update search indices
             self._update_search_indices(chunk_data)
@@ -124,6 +125,7 @@ class RAGProcessor:
                 "chunk_data": [
                     {
                         "doc_id": chunk.doc_id,
+                        "bot_id": bot_id,
                         "chunk_id": chunk.chunk_id,
                         "original_text": chunk.original_text,
                         "processed_text": chunk.processed_text,
@@ -227,14 +229,15 @@ class RAGProcessor:
 
     async def _process_chunks(
         self, 
-        doc_id: str, 
+        doc_id: str,
+        bot_id: str,
         chunks: List[str], 
         language: str = "en"
     ) -> List[ChunkMetadata]:
         """
         Process chunks in parallel based on the specified language.
         """
-        async def process_chunk(chunk: str, chunk_id: int, language: str = "en") -> ChunkMetadata:
+        async def process_chunk(chunk: str, chunk_id: int, bot_id: str, language: str = "en") -> ChunkMetadata:
             if language == "amh":
                 processed_text = self.stem_text(chunk)
             else:
@@ -248,6 +251,7 @@ class RAGProcessor:
             
             return ChunkMetadata(
                 doc_id=doc_id,
+                bot_id=bot_id,
                 chunk_id=chunk_id,
                 original_text=chunk,
                 processed_text=processed_text,
@@ -341,110 +345,98 @@ class RAGProcessor:
             raise
 
     async def search(
-        self,
-        query: str,
-        top_k: int = 5,
-        semantic_weight: float = 0.5,
-        bot_id: Optional[str] = None
+    self,
+    query: str,
+    top_k: int = 5,
+    semantic_weight: float = 0.5,
+    bot_id: Optional[str] = None
     ) -> List[Dict[str, Any]]:
-        """
-        Hybrid search combining BM25 and semantic search with smart scoring.
-        Ensures all chunks are considered regardless of top_k value.
-        """
+        """Hybrid search with direct bot_id filtering using chunk metadata."""
         try:
-            # Validate top_k
+            # Validate inputs
             if top_k <= 0:
-                raise ValueError("top_k must be greater than 0.")
-
-            # Check if chunks_metadata is empty
-            if not self.chunks_metadata:
-                logger.warning("Chunks metadata is empty. No data to search.")
-                return []
-            bot_document_ids = []
-            if bot_id:
-                try:
-                    bot_document_ids = await self.get_bot_documents(bot_id)
-                    logger.info(f"Filtering for bot {bot_id} with {len(bot_document_ids)} documents")
-                except Exception as e:
-                    logger.error(f"Failed to fetch bot documents: {e}")
-                    bot_document_ids = []
-
-            # Clean query
-            cleaned_query = await self._clean_text(query)
-            print("cleaned", cleaned_query)
-
-            # Get BM25 scores for ALL chunks
-            if self.bm25 is None:
-                logger.warning("BM25 index not initialized. Using only semantic search.")
-                bm25_scores = np.zeros(len(self.chunks_metadata))
-            else:
-                bm25_scores = self.bm25.get_scores(cleaned_query.split())
-
-            # Get semantic scores for ALL chunks
-            query_embedding = self._get_embedding(cleaned_query)
-            query_embedding = query_embedding.reshape(1, -1)
-            faiss.normalize_L2(query_embedding)
+                raise ValueError("top_k must be greater than 0")
             
-            # Get ALL semantic scores
-            k = len(self.chunks_metadata)  # Get scores for ALL chunks
-            semantic_distances, semantic_indices = self.index.search(query_embedding, k)
+            if not self.chunks_metadata:
+                logger.warning("Search attempted with empty chunks metadata")
+                return []
 
-            # Combine scores for ALL chunks
-            combined_scores = []
-            for idx in range(len(self.chunks_metadata)):
+            # Clean and preprocess query
+            cleaned_query = await self._clean_text(query)
+            if self.nlp.meta["lang"] == "en":
+                cleaned_query = self._preprocess_english_query(cleaned_query)
+            else:
+                cleaned_query = self.stem_text(cleaned_query)
+
+            # Get allowed indices using direct bot_id check
+            allowed_indices = [
+                idx for idx, chunk in enumerate(self.chunks_metadata)
+                if not bot_id or chunk.bot_id == bot_id
+            ]
+            
+            if not allowed_indices:
+                logger.info(f"No documents found for bot {bot_id}" if bot_id else "No documents in index")
+                return []
+
+            # Get BM25 scores
+            tokenized_query = cleaned_query.split()
+            if self.bm25:
+                bm25_scores = self.bm25.get_scores(tokenized_query)
+            else:
+                bm25_scores = np.zeros(len(self.chunks_metadata))
+                logger.warning("BM25 index not initialized")
+
+            # Get semantic scores
+            query_embedding = self._get_embedding(cleaned_query).reshape(1, -1)
+            faiss.normalize_L2(query_embedding)
+            distances, indices = self.index.search(query_embedding, self.index.ntotal)
+
+            # Combine scores efficiently using numpy
+            valid_scores = []
+            for idx in allowed_indices:
+                semantic_pos = np.where(indices[0] == idx)[0]
+                if semantic_pos.size == 0:
+                    continue  # Skip chunks not in semantic results
+                    
+                semantic_score = distances[0][semantic_pos[0]]
                 bm25_score = bm25_scores[idx]
-                semantic_idx_pos = np.where(semantic_indices[0] == idx)[0]
                 
-                if len(semantic_idx_pos) > 0:
-                    semantic_score = semantic_distances[0][semantic_idx_pos[0]]
-                else:
-                    continue
-
                 # Normalize scores
-                norm_bm25 = bm25_score / max(bm25_scores) if max(bm25_scores) > 0 else 0
-                norm_semantic = (semantic_score + 1) / 2  # Convert from [-1,1] to [0,1]
+                norm_bm25 = (bm25_score - np.min(bm25_scores)) / (np.max(bm25_scores) - np.min(bm25_scores) + 1e-9)
+                norm_semantic = (semantic_score + 1) / 2  # Convert cosine to [0,1]
                 
-                # Calculate boost for special matches
-                boost = self._calculate_boost(cleaned_query, self.chunks_metadata[idx])
+                # Calculate dynamic boost from special matches
+                boost = 1.0 + 0.1 * sum(
+                    len(matches) 
+                    for matches in self.chunks_metadata[idx].special_matches.values()
+                )
                 
-                # Combine scores with weights
+                # Combine scores with weights and boost
                 final_score = (
                     semantic_weight * norm_semantic +
                     (1 - semantic_weight) * norm_bm25
                 ) * boost
+                
+                valid_scores.append((idx, final_score))
 
-                combined_scores.append((idx, final_score))
+            # Sort and select top results
+            valid_scores.sort(key=lambda x: x[1], reverse=True)
+            top_results = valid_scores[:top_k]
 
-            # Sort ALL scores and get top_k
-            combined_scores.sort(key=lambda x: x[1], reverse=True)
-            top_results = combined_scores[:top_k]
-
-            # Format results
-            results = []
-            for idx, score in top_results:
-                chunk = self.chunks_metadata[idx]
-                results.append({
-                    "doc_id": chunk.doc_id,
-                    "chunk_id": chunk.chunk_id,
-                    "text": chunk.original_text,
-                    "score": float(score),
-                    "special_matches": chunk.special_matches
-                })
-
-            return results
+            # Format results with chunk metadata
+            return [{
+                "doc_id": self.chunks_metadata[idx].doc_id,
+                "bot_id": self.chunks_metadata[idx].bot_id,
+                "chunk_id": self.chunks_metadata[idx].chunk_id,
+                "text": self.chunks_metadata[idx].original_text,
+                "score": float(score),
+                "language": self.chunks_metadata[idx].language,
+                "special_matches": self.chunks_metadata[idx].special_matches
+            } for idx, score in top_results]
 
         except Exception as e:
-            logger.error("Error during search:\n" + traceback.format_exc())
+            logger.error(f"Search error: {str(e)}\n{traceback.format_exc()}")
             raise
-
-    async def get_bot_documents(self, bot_id: str) -> list:
-        """Fetch bot's documents from Node.js API"""
-        NODE_API = os.getenv("NODE_API_URL", "http://localhost:5000")
-        response = requests.get(
-            f"{NODE_API}/api/bots/{bot_id}/documents",
-            headers={"Authorization": os.getenv("API_KEY")}
-        )
-        return response.json().get("documents", [])
 
     def _calculate_boost(self, query: str, chunk: ChunkMetadata) -> float:
         """Calculate boost factor based on special matches."""
