@@ -85,36 +85,51 @@
                 class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white dark:bg-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"></textarea>
             </div>
           </div>
-          <div class="flex flex-col sm:flex-row sm:items-center sm:space-x-4">
-            <div class="flex items-center">
+          <div class="flex flex-col sm:flex-row sm:items-start sm:gap-6">
+            <!-- Make Public Checkbox -->
+            <div class="flex items-center mb-4 sm:mb-0">
               <input v-model="isPublic" type="checkbox" id="isPublic"
-                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-              <label for="isPublic" class="ml-2 block text-sm text-gray-900 dark:text-gray-300">Make Public</label>
+                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded dark:border-gray-600 dark:bg-gray-700">
+              <label for="isPublic" class="ml-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Make Public
+              </label>
             </div>
-            <div class="sm:mt-0 flex-1">
-              <fieldset>
-                <legend class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select up to 3 Categories
+
+            <!-- Category Selection -->
+            <div class="flex-1 w-full">
+              <fieldset class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                <legend class="text-sm font-semibold text-gray-900 dark:text-gray-100 px-2">
+                  Select up to 3 Categories
+                  <p class="text-xs font-normal text-gray-500 dark:text-gray-400 mt-1">
+                    Choose relevant categories for better discoverability
+                  </p>
                 </legend>
-                <div class="space-y-2">
-                  <div v-for="cat in categories" :key="cat" class="flex items-center">
+
+                <div class="grid grid-cols-2 gap-4 mt-3">
+                  <div v-for="cat in categories" :key="cat"
+                    class="flex items-center p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                     <input type="checkbox" :value="cat" v-model="category" @change="handleCategoryChange"
-                      id="category-{{ cat }}"
-                      class="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-400 rounded" />
-                    <label :for="'category-' + cat" class="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+                      :id="'category-' + cat"
+                      class="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:focus:ring-blue-400 rounded">
+                    <label :for="'category-' + cat" class="ml-3 block text-sm text-gray-700 dark:text-gray-300">
                       {{ cat }}
                     </label>
                   </div>
                 </div>
-                <p v-if="category.length > 0" class="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                  Selected:
-                  <span v-for="cat in category" :key="cat"
-                    class="bg-purple-100 text-purple-800 px-2 inline-flex text-xs leading-5 font-semibold rounded-full mr-1">
-                    {{ cat }}
-                  </span>
-                </p>
-                <p v-else class="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                  No categories selected.
-                </p>
+
+                <!-- Selected Categories -->
+                <div class="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700">
+                  <p v-if="category.length > 0" class="text-sm text-gray-600 dark:text-gray-300">
+                    Selected categories:
+                    <span v-for="cat in category" :key="cat"
+                      class="bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 px-2.5 py-0.5 inline-flex text-xs leading-5 font-medium rounded-full mr-2 mt-2">
+                      {{ cat }}
+                    </span>
+                  </p>
+                  <p v-else class="text-sm text-gray-400 dark:text-gray-500 italic">
+                    No categories selected
+                  </p>
+                </div>
               </fieldset>
             </div>
           </div>
