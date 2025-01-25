@@ -5,7 +5,7 @@ const FormData = require('form-data');
 const Document = require('../models/Document');
 
 async function uploadDocument(file, metadata, userId) {
-  const { title, category, docScope, language } = metadata;
+  const { title, category, docScope, language, bot_id } = metadata;
 
   // Validation
   if (!title?.trim()) throw new Error('Title is required');
@@ -13,6 +13,7 @@ async function uploadDocument(file, metadata, userId) {
   if (!category) throw new Error('Category is required');
   if (!docScope) throw new Error('Document Scope is required');
   if (!language) throw new Error('Language is required');
+  if (!bot_id) throw new Error('Bot ID is required');
 
 
   console.log('File object:', file);
@@ -21,6 +22,7 @@ async function uploadDocument(file, metadata, userId) {
   // Create document record
   const newDoc = new Document({
     title,
+    bot_id,
     filePath: file.path,
     uploaderId: userId,
     status: 'processing', // Add status field to your schema
@@ -49,6 +51,7 @@ async function uploadDocument(file, metadata, userId) {
     form.append('doc_scopes', docScope);
     form.append('categories', category);
     form.append('languages', language);
+    form.append('bot_ids', bot_id.toString());
 
     const response = await axios.post(`${aiServiceUrl}/embed_documents`, form, {
       headers: form.getHeaders(),

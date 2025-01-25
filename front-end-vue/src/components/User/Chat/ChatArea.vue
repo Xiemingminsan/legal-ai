@@ -210,7 +210,7 @@ const askAi = async () => {
         <select v-model="selectedLanguage"
           class="px-2 rounded-lg border border-gray-300 dark:border-gray-600 rounded-l-lg py-2 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:bg-gray-700 dark:text-gray-200">
           <option value="en">Eng</option>
-          <option value="am">Amh</option>
+          <option value="amh">Amh</option>
         </select>
 
         <!-- Message Input -->
