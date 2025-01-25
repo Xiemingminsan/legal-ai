@@ -21,7 +21,12 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from nltk.tokenize import word_tokenize
 from dotenv import load_dotenv
-
+import nltk
+nltk.download('punkt')
+nltk.download('punkt', quiet=True)
+nltk.download('stopwords', quiet=True)
+nltk.download('wordnet', quiet=True)
+nltk.download('punkt_tab')
 from utils.pdf_extractor import PDFExtractor
 from utils.amharic_rag import ConcurrentTranslator
 
@@ -47,6 +52,7 @@ BM25_STORE_PATH = CACHE_DIR / "bm25_store.json"  # New path for BM25 data
 DIMENSION = 768    # for "all-MiniLM-L6-v2"
 
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
 
 class GlobalState:
     """Singleton class to manage global state"""
