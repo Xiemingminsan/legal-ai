@@ -141,6 +141,8 @@ router.get("/", authMiddleware, async (req, res) => {
       visibility: "private",
     }).populate("documents");
 
+    console.log("prim",primaryBots, "public", publicCustomBots, "private ", privateBots);
+
     res.json({
       primary: primaryBots,
       public: publicCustomBots,

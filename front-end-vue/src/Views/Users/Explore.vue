@@ -18,7 +18,7 @@
       </div>
     </section>
     <section>
-      <h2 class="inline text-2xl font-semibold text-gray-800 dark:text-gray-200">My Bots</h2>
+      <h2 class="inline text-2xl font-semibold text-gray-800 dark:text-gray-200">Public Bots</h2>
       <div class="inline-block ml-2 w-min bg-yellow-400 text-gray-900 text-xs font-bold px-2 py-1 rounded-full">
         Premium
       </div>
@@ -29,7 +29,7 @@
     </section>
     <section>
       <br><br>
-      <h2 class="inline text-2xl font-semibold text-gray-800 dark:text-gray-200">Custom Bots</h2>
+      <h2 class="inline text-2xl font-semibold text-gray-800 dark:text-gray-200">Private Bots</h2>
       <div class="inline-block ml-2 w-min bg-yellow-400 text-gray-900 text-xs font-bold px-2 py-1 rounded-full">
         Premium
       </div>
@@ -62,6 +62,7 @@ const getExploreBots = async () => {
   error.value = null; // Reset the error before the request
 
   const response = await userStore.getExploreBots();
+  console.log(response);
   isLoading.value = false;
 
   if (response.error) {
@@ -70,7 +71,7 @@ const getExploreBots = async () => {
     return;
   }
   primaryBots.value = response.primary;
-  userBots.value = response.custom;
+  userBots.value = response.public;
   myBots.value = response.private;
 
 

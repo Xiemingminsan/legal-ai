@@ -1,10 +1,9 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, nextTick } from 'vue'; // Added nextTick import
 import { useUserStore } from '@/stores/userStore';
 import { MyToast } from '@/utils/toast';
 import ErrorRetryComp from '@/components/Basics/ErrorRetryComp.vue';
 import { MyUtils } from '@/utils/Utils';
-
 
 const props = defineProps({
   chat: {
@@ -17,82 +16,114 @@ const props = defineProps({
   },
 });
 
-
 const userStore = useUserStore();
-
 const isLoading = ref(false);
 const error = ref(null);
 const botDetails = ref({});
-const conversationId = ref({});
+const conversationId = ref('');
 const conversation = ref([]);
-
 const messageToSend = ref('');
 const selectedLanguage = ref('en');
+const messagesContainer = ref(null); // Reference for scrolling
 
-
-
+const isLoadingNewMessage = ref(false);
+const errorGettingLastChat = ref(null);
 
 const getConversation = async () => {
   isLoading.value = true;
-  error.value = null; // Reset the error before the request
+  error.value = null;
 
   const response = await userStore.getConversation(props.chat.conversationId);
   isLoading.value = false;
 
   if (response.error) {
-    error.value = response.error; // Set the error message
-    MyToast.error(response.error); // Optionally show a toast message
+    error.value = response.error;
+    MyToast.error(response.error);
     return;
   }
+  
   conversation.value = response.messages;
   botDetails.value = response.bot;
   conversationId.value = response.conversationId;
-
+  
+  // Scroll to bottom after load
+  nextTick(scrollToBottom);
 };
 
+const scrollToBottom = () => {
+  if (messagesContainer.value) {
+    messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+  }
+};
 
 onMounted(() => {
   getConversation();
 });
-// Watch for changes to the `chat` prop
+
 watch(
   () => props.chat,
-  (newChat, oldChat) => {
-    if (newChat !== oldChat) {
-      getConversation();
-    }
+  (newChat) => {
+    if (newChat) getConversation();
   },
-  { immediate: true } // This ensures `getConversation()` runs on initial mount too
+  { immediate: true }
 );
 
-
-
+// Auto-scroll when conversation updates
+watch(conversation, () => {
+  nextTick(scrollToBottom);
+}, { deep: true });
 
 const askAi = async () => {
-  messageToSend.value.trim();
-  console.log("heeee")
-  if (messageToSend.value.length > 200) {
-    //@todo in amharic and english
+  const message = messageToSend.value.trim();
+  if (!message) return;
+  
+  if (message.length > 200) {
     MyToast.error("Message is too long. Please keep it under 200 characters.");
     return;
   }
 
+  // Optimistic update
+  const tempId = Date.now().toString();
+  conversation.value.push({
+    _id: tempId,
+    role: 'user',
+    text: message,
+    timestamp: new Date().toISOString()
+  });
+
   const payload = {
-    query: messageToSend.value,
+    query: message,
     language: selectedLanguage.value,
     conversationId: conversationId.value,
   };
-  const response = await userStore.askAi(payload);
 
-  if (response.error) {
-    MyToast.error(response.error); // Optionally show a toast message
-    return;
+  messageToSend.value = '';
+  
+  try {
+    const response = await userStore.askAi(payload);
+
+    if (response.error) {
+      MyToast.error(response.error);
+      // Remove optimistic update
+      conversation.value = conversation.value.filter(msg => msg._id !== tempId);
+      errorGettingLastChat.value = response.error; // Set error state
+      return;
+    }
+
+    // Update with server response
+    conversation.value = response.conversation;
+    conversationId.value = response.conversationId;
+
+  } catch (error) {
+    MyToast.error("Failed to send message");
+    conversation.value = conversation.value.filter(msg => msg._id !== tempId);
+    errorGettingLastChat.value = error; // Set error state
+    console.error("Ask AI error:", error);
+
+  } finally {
+    isLoadingNewMessage.value = false; // Reset loading state
   }
-  MyToast.success("Text is Sent");
 };
-
-
-
 </script>
 
 <template>
