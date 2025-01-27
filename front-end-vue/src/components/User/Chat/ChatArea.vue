@@ -3,8 +3,7 @@ import { ref, onMounted, watch, nextTick } from 'vue'; // Added nextTick import
 import { useUserStore } from '@/stores/userStore';
 import { MyToast } from '@/utils/toast';
 import ErrorRetryComp from '@/components/Basics/ErrorRetryComp.vue';
-import { MyUtils } from '@/utils/Utils';
-
+import MessageBubble from '@/components/User/Chat/MessageBubble.vue';
 const props = defineProps({
   chat: {
     type: Object,
@@ -25,10 +24,23 @@ const conversation = ref([]);
 const messageToSend = ref('');
 const selectedLanguage = ref('en');
 const messagesContainer = ref(null); // Reference for scrolling
-
-
+const isPremiumUser = ref(true);
 const isLoadingNewMessage = ref(false);
 const errorGettingLastChat = ref(null);
+const selectedFile = ref(null);
+const fileUploaded = ref(false);
+
+// Allowed file types
+const allowedTypes = [
+  "text/plain",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+];
+
 
 const getConversation = async () => {
   isLoading.value = true;
@@ -75,6 +87,29 @@ watch(conversation, () => {
   nextTick(scrollToBottom);
 }, { deep: true });
 
+
+
+
+// Handle file input change
+const onFileChange = (event) => {
+  const file = event.target.files[0];
+
+  if (!file) return; // No file selected
+
+  // Validate file type
+  if (!allowedTypes.includes(file.type)) {
+    console.log(`Failed attempt: File type "${file.type}" is not allowed.`);
+    fileUploaded.value = false;
+    return;
+  }
+
+  // File is valid
+  selectedFile.value = file;
+  fileUploaded.value = true;
+
+  console.log(`File selected: ${file.name}`);
+};
+
 const askAi = async () => {
   const message = messageToSend.value.trim();
   if (!message) return;
@@ -93,11 +128,22 @@ const askAi = async () => {
     timestamp: new Date().toISOString()
   });
 
-  const payload = {
-    query: message,
-    language: selectedLanguage.value,
-    conversationId: conversationId.value,
-  };
+  // const payload = {
+  //   query: message,
+  //   file: selectedFile,
+  //   language: selectedLanguage.value,
+  //   conversationId: conversationId.value,
+  // };
+
+  const formData = new FormData();
+  formData.append('query', message);
+  formData.append('language', selectedLanguage.value);
+  formData.append('conversationId', conversationId.value);
+
+  // Conditionally append the file only if it exists
+  if (selectedFile.value) {
+    formData.append('file', selectedFile.value);
+  }
 
   messageToSend.value = '';
 
@@ -105,7 +151,7 @@ const askAi = async () => {
     scrollToBottom();
     isLoadingNewMessage.value = true;
     errorGettingLastChat.value = null;
-    const response = await userStore.askAi(payload);
+    const response = await userStore.askAi(formData);
 
     if (response.error) {
       MyToast.error(response.error);
@@ -155,22 +201,12 @@ const askAi = async () => {
 
       <!-- Sucess State -->
       <div v-else>
-        <div v-if="conversation.length === 0"
-          class="flex justify-center items-center overflow-scroll mb-10 h-[80%] mt-32">
+        <div v-if="conversation.length === 0" class="flex justify-center items-center  mb-10 h-[80%] mt-32">
           <p class="text-gray-500 dark:text-gray-400">Start chatting by typing a message below.</p>
         </div>
 
-        <div v-else v-for="message in conversation" :key="message._id" class=" p-4 space-y-4"
-          :class="{ 'justify-end': message.role == 'user' }">
-          <div :class="['flex', message.role == 'user' ? 'justify-end' : 'justify-start']">
-            <div
-              :class="['max-w-[70%] rounded-lg p-3', message.role == 'user' ? 'bg-sky-500 text-white' : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200']">
-              <p>{{ message.text }}</p>
-              <span v-if="message.role == 'user'" class="text-xs text-gray-300 block text-right mt-1">
-                {{ MyUtils.formatTimestamp(message.timestamp) }}
-              </span>
-            </div>
-          </div>
+        <div v-else v-for="message in conversation" :key="message._id" class="p-4 space-y-4">
+          <MessageBubble :message="message" />
         </div>
         <!-- Show spinner when loading -->
         <div v-if="isLoadingNewMessage" class="p-4 space-y-4">
@@ -217,6 +253,30 @@ const askAi = async () => {
         <input v-model="messageToSend" type="text" placeholder="Type your message..."
           class="flex-1 rounded-lg border-t border-b border-r border-gray-300 dark:border-gray-600 py-2 px-4 focus:outline-none focus:ring-1 focus:ring-gray-500 dark:bg-gray-700 dark:text-gray-200" />
 
+        <!-- File Upload Button with Pro Label -->
+        <div class="relative">
+          <div>
+            <!-- File Input Label -->
+            <label for="file-upload"
+              class="cursor-pointer bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg p-2 hover:bg-gray-400 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+              :class="{
+                'bg-green-500 dark:bg-green-600': fileUploaded,
+                'opacity-50 cursor-not-allowed': !isPremiumUser,
+              }">
+              <i class="ri-upload-cloud-2-line h-5 w-5"></i>
+            </label>
+
+            <!-- Hidden File Input -->
+            <input id="file-upload" type="file" class="hidden" :disabled="!isPremiumUser"
+              accept=".txt,.doc,.docx,.pdf,image/*" @change="onFileChange" />
+          </div>
+          <!-- Pro Label -->
+          <div v-if="!isPremiumUser"
+            class="absolute bottom-3 right-5 transform translate-y-1/2 translate-x-1/2 bg-sky-500 text-white text-[10px] font-semibold px-2 py-1 rounded-full">
+            Pro
+          </div>
+        </div>
+
         <!-- Send Button -->
         <button type="submit"
           class="bg-sky-500 text-white rounded-r-lg py-2 px-5 hover:bg-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-500">
@@ -224,7 +284,6 @@ const askAi = async () => {
         </button>
       </div>
     </form>
-
   </div>
 </template>
 
