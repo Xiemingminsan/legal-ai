@@ -9,8 +9,7 @@
         @click="handleSelectChat(chat)">
         <div class="flex items-center p-4">
           <!-- Bot Icon -->
-        <img :src="chat.bot?.icon ?  chat.bot.icon : '/bot.png'" alt="bot icon"
-            class="w-12 h-12 rounded-full mr-4" />
+          <img :src="chat.bot?.icon ? chat.bot.icon : '/bot.png'" alt="bot icon" class="w-12 h-12 rounded-full mr-4" />
 
           <!-- Chat Details -->
           <div class="flex-1 min-w-0">
@@ -26,7 +25,6 @@
             <span class="text-xs  text-gray-500 dark:text-gray-400">
               {{ MyUtils.dateFormatter(chat.timeStamp) }}
             </span>
-
             <!-- Share and Delete Icons -->
             <div class="flex  space-x-2 opacity-60 group-hover:opacity-100 transition-opacity duration-150">
               <!-- Share Icon -->
