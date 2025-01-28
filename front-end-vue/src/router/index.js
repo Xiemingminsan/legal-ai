@@ -55,34 +55,43 @@ const router = createRouter({
         { path: 'settings', component: AdminSettings },
       ],
     },
-    // {
-    //   path: '/admin',
-    //   component: AdminBaseLayout,
-    //   children: [{ path: 'adminHome', component: AdminHome }],
     // },
-    // { path: '/:pathMatch(.*)*', redirect: '/' }, // Redirect unknown routes to the landing page
+    { path: '/:pathMatch(.*)*', redirect: '/explore' }, // Redirect unknown routes to the landing page if not logged in else to home
   ],
 })
 
-// // Router Navigation Guards
-// router.beforeEach((to, from, next) => {
-//   const authStore = useAuthStore()
+router.beforeEach((to, from) => {
+  const authStore = useAuthStore()
+  const publicPaths = ['/land', '/SignUp', '/SignIn']
+  const adminRoutes = [
+    '/admin',
+    '/admin/dashboard',
+    '/admin/users',
+    '/admin/bots',
+    '/admin/bot/:id',
+    '/admin/createBot',
+    '/admin/settings',
+  ]
 
-//   // If the user is not authenticated and is not trying to go to SignUp/SignIn routes
-//   if (!authStore.isAuthenticated && ['/SignUp', '/SignIn'].indexOf(to.path) === -1) {
-//     // If the user is already at the landing page, do not redirect
-//     if (to.path !== '/') {
-//       return next('/')
-//     }
-//   }
+  // Handle public routes
+  if (publicPaths.includes(to.path)) {
+    // Redirect authenticated users away from public routes
+    return authStore.token ? '/home' : true
+  }
 
-//   // If the user is authenticated but is trying to access admin routes and doesn't have the "admin" role
-//   if (authStore.isAuthenticated && authStore.role !== 'admin' && to.path.startsWith('/admin')) {
-//     return next('/home') // Redirect to home if user is not an admin
-//   }
+  // Check authentication for non-public routes
+  if (!authStore.token) {
+    return '/SignIn'
+  }
 
-//   // Otherwise, allow navigation to the requested route
-//   next()
-// })
+  // Restrict admin routes to admins only
+  if (adminRoutes.some((route) => to.path.startsWith(route))) {
+    if (authStore.role !== 'admin') {
+      return '/home' // Redirect non-admin users to the home page
+    }
+  }
+
+  return true
+})
 
 export default router
