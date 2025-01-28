@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'; // Added nextTick import
+import { ref, onMounted, nextTick, onUnmounted } from 'vue'; // Added nextTick import
 import { useUserStore } from '@/stores/userStore';
 import { MyToast } from '@/utils/toast';
 import ErrorRetryComp from '@/components/Basics/ErrorRetryComp.vue';
@@ -7,10 +7,6 @@ import MessageBubble from '@/components/User/Chat/MessageBubble.vue';
 defineProps({
   chat: {
     type: Object,
-    required: true,
-  },
-  onBack: {
-    type: Function,
     required: true,
   },
 });
@@ -23,6 +19,7 @@ const conversation = ref([]);
 const messagesContainer = ref(null); // Reference for scrolling
 const sharedConversationId = ref(null);
 import { useRoute } from 'vue-router';
+import { setNavBarShowState } from '@/utils/Utils';
 
 const route = useRoute();
 
@@ -56,7 +53,16 @@ onMounted(() => {
   sharedConversationId.value = route.params.id;
   getConversation();
   scrollToBottom();
+  setNavBarShowState(false);
+
 });
+
+
+
+onUnmounted(() => {
+  setNavBarShowState(true);
+});
+
 </script>
 
 <template>
@@ -65,9 +71,9 @@ onMounted(() => {
       class="bg-white dark:bg-gray-800 p-4 flex justify-between items-center border-b border-gray-200 dark:border-gray-700">
       <!-- Left: Back button and bot details -->
       <div class="flex items-center">
-        <button @click="onBack" class="mr-4 md:hidden">
-          <i class="ri-arrow-left-line h-6 w-6 text-gray-600 dark:text-gray-400"></i>
-        </button>
+        <router-link to="/home" class="mr-4 md:hidden">
+          <i class="ri-arrow-left-line  text-3xl rounded-2xl p-3 bg-[#ffffff10] text-gray-600 dark:text-gray-400"></i>
+        </router-link>
         <img :src="botDetails.icon || '/bot.png'" alt="bot icon" class="w-12 h-12 rounded-full mr-4" />
         <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200">{{ botDetails.name }}</h2>
       </div>

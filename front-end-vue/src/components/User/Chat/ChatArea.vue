@@ -1,9 +1,12 @@
 <script setup>
-import { ref, onMounted, watch, nextTick } from 'vue'; // Added nextTick import
+import { ref, onMounted, watch, nextTick, onUnmounted } from 'vue'; // Added nextTick import
 import { useUserStore } from '@/stores/userStore';
 import { MyToast } from '@/utils/toast';
 import ErrorRetryComp from '@/components/Basics/ErrorRetryComp.vue';
 import MessageBubble from '@/components/User/Chat/MessageBubble.vue';
+import { setNavBarShowState } from '@/utils/Utils';
+
+
 const props = defineProps({
   chat: {
     type: Object,
@@ -72,7 +75,13 @@ const scrollToBottom = () => {
 onMounted(() => {
   getConversation();
   scrollToBottom();
+  setNavBarShowState(false);
 });
+
+onUnmounted(() => {
+  setNavBarShowState(true);
+});
+
 
 watch(
   () => props.chat,
@@ -183,10 +192,9 @@ const askAi = async () => {
   <div class="flex flex-col h-full bg-gray-100 dark:bg-gray-900">
     <div class="bg-white dark:bg-gray-800 p-4 flex items-center border-b border-gray-200 dark:border-gray-700">
       <button @click="onBack" class="mr-4 md:hidden">
-        <i class="ri-arrow-left-line h-6 w-6 text-gray-600 dark:text-gray-400"></i>
+        <i class="ri-arrow-left-line  text-3xl rounded-2xl p-3 bg-[#ffffff10] text-gray-600 dark:text-gray-400"></i>
       </button>
-      <img :src="chat.bot?.icon ? chat.bot.icon : '/bot.png'" alt="bot icon"
-        class="w-12 h-12 rounded-full mr-4" />
+      <img :src="chat.bot?.icon ? chat.bot.icon : '/bot.png'" alt="bot icon" class="w-12 h-12 rounded-full mr-4" />
       <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200">{{ chat.bot.name }}</h2>
       <div class="flex-grow"></div>
       <!-- Right: Info icon -->
@@ -245,7 +253,7 @@ const askAi = async () => {
     <!-- @todo reponsviness -->
     <!-- Input Areaa -->
     <form @submit.prevent="askAi"
-      class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 mb-32 md:mb-0">
+      class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4  md:mb-0">
       <div class="flex items-center gap-2">
         <!-- Language Dropdown -->
         <select v-model="selectedLanguage"
