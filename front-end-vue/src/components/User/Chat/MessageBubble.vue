@@ -16,7 +16,8 @@
         <!-- File Details -->
         <div class="flex-1">
           <a :href="MyHttpService.BASE_URL + message.file.filedownloadUrl" target="_blank" rel="noopener noreferrer"
-            class="font-semibold truncate text-gray-700 dark:text-gray-200">{{ message.file.filename }}</a>
+            class="font-semibold truncate text-gray-700 dark:text-gray-200">{{ message.file.filename.length > 20 ?
+              message.file.filename.slice(0, 20) + '...' : message.file.filename }}</a>
           <p class="text-sm text-gray-500">
             {{ message.file.fileSize }} MB
           </p>

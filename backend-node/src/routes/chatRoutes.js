@@ -4,11 +4,11 @@ const authMiddleware = require("../middlewares/authMiddleware");
 const axios = require("axios");
 const ChatHistory = require("../models/ChatHistory");
 const Bot = require("../models/Bot");
+const SharedConversation = require("../models/SharedConversation");
 const mongoose = require("mongoose");
-
 const multer = require("multer");
 const path = require("path");
-const { Types } = mongoose;
+const { Types, Schema } = mongoose;
 
 // Pdf parser
 const pdf = require("pdf-parse");
@@ -455,6 +455,89 @@ router.get("/conversation/:conversationId", authMiddleware, async (req, res) => 
   } catch (error) {
     console.error("Error fetching conversation:", error);
     res.status(500).json({ msg: "Server error fetching conversation" });
+  }
+});
+
+router.post("/shareChat", authMiddleware, async (req, res) => {
+  try {
+    const { conversationId } = req.query;
+    const userId = req.user.userId;
+
+    // Fetch the conversation from ChatHistory
+    const conversation = await ChatHistory.findOne({
+      _id: conversationId,
+      userId: userId,
+    }).populate({
+      path: "botId",
+      select: "name icon",
+    });
+
+    if (!conversation) {
+      return res.status(404).json({ msg: "Conversation not found" });
+    }
+
+    // Prepare the data for the shared conversation
+    const sharedConversationData = {
+      conversationId: conversation._id,
+      userId: userId,
+      bot: conversation.botId
+        ? {
+            id: conversation.botId._id || null,
+            name: conversation.botId.name || null,
+            icon: conversation.botId.icon || null,
+          }
+        : {},
+      messages: conversation.conversation.map((msg) => ({
+        role: msg.role || "bot", // Default to "bot" if missing
+        text: msg.text || "", // Default to empty string if text is missing
+        file: msg.file
+          ? {
+              filename: msg.file.filename || null,
+              filetype: msg.file.filetype || null,
+              fileSize: msg.file.fileSize || null,
+              filedownloadUrl: msg.file.filedownloadUrl || null,
+            }
+          : null,
+        fileTextContent: msg.fileTextContent || "", // Default to empty string if not provided
+        timestamp: msg._id ? msg._id.getTimestamp() : new Date(), // Use current date if timestamp is missing
+      })),
+    };
+
+    // Save the shared conversation to the new schema
+    const sharedConversation = new SharedConversation(sharedConversationData);
+    await sharedConversation.save();
+
+    // Return the ID of the shared conversation
+    res.status(200).json({
+      sharedConversationId: sharedConversation._id,
+    });
+  } catch (error) {
+    console.error("Error sharing conversation:", error);
+    res.status(500).json({ msg: "Server error sharing conversation" });
+  }
+});
+
+router.get("/getSharedConversation", async (req, res) => {
+  try {
+    const { sharedConversationId } = req.query; // Get sharedConversationId from query params
+
+    // Check if sharedConversationId is provided
+    if (!sharedConversationId) {
+      return res.status(400).json({ msg: "sharedConversationId is required " });
+    }
+
+    // Fetch the shared conversation
+    const sharedConversation = await SharedConversation.findById(sharedConversationId);
+
+    if (!sharedConversation) {
+      return res.status(404).json({ msg: "Shared conversation not found" });
+    }
+
+    // Return the shared conversation data
+    res.status(200).json(sharedConversation);
+  } catch (error) {
+    console.error("Error fetching shared conversation:", error);
+    res.status(500).json({ msg: "Server error fetching shared conversation" });
   }
 });
 

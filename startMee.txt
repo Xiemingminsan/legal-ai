@@ -1,0 +1,11 @@
+cd 'c:\Users\User\Desktop\legal-ai\front-end-vue'
+npm run dev
+
+cd 'c:\Users\User\Desktop\legal-ai\backend-node'
+npm run dev
+
+
+cd 'c:\Users\User\Desktop\legal-ai\ai-microservice-python'
+venv\Scripts\activate
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
+python -m uvicorn main:app --reload --port 8000

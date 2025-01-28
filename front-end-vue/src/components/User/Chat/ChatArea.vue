@@ -188,6 +188,11 @@ const askAi = async () => {
       <img :src="chat.bot?.icon ? '/' + chat.bot.icon : '/bot.png'" alt="bot icon"
         class="w-12 h-12 rounded-full mr-4" />
       <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200">{{ chat.bot.name }}</h2>
+      <div class="flex-grow"></div>
+      <!-- Right: Info icon -->
+      <i class="ri-information-line text-2xl text-gray-500 dark:text-gray-300"
+        title="Using AI for legal matters in Ethiopia cannot guarantee 100% accuracy or reliability due to the complexities and nuances of local laws and regulations."></i>
+
     </div>
 
     <div class="flex-grow overflow-y-scroll  scrollable-div" ref="messagesContainer">

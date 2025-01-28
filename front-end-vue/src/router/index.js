@@ -17,6 +17,7 @@ import AdminBotDetails from '@/Views/Admin/AdminBotDetails.vue'
 import CreateNewBot from '@/Views/Admin/CreateNewBot.vue'
 import AdminSettings from '@/Views/Admin/AdminSettings.vue'
 import CreateBotUser from '@/Views/Users/CreateBotUser.vue'
+import SharedChats from '@/components/User/Chat/SharedChats.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -38,6 +39,7 @@ const router = createRouter({
           component: RecentChatsBar,
           props: (route) => ({ conversationId: route.query.conversationId }),
         },
+        { path: 'sharedChats/:id', component: SharedChats },
       ],
     },
 

@@ -48,8 +48,13 @@
 </template>
 <script setup>
 import { MyUtils } from '@/utils/Utils';
-import { defineProps, defineEmits } from 'vue';
+import { defineProps, defineEmits, onMounted } from 'vue';
+import { useUserStore } from '@/stores/userStore';
+import { MyToast } from '@/utils/toast';
+import MyHttpService from '@/stores/MyHttpService';
 
+
+const userStore = useUserStore();
 defineProps({
   chats: {
     type: Array,
@@ -62,4 +67,29 @@ const emit = defineEmits(['selectChat']);
 const handleSelectChat = (chat) => {
   emit('selectChat', chat);
 };
+
+
+
+
+const handleShareChat = async (chat) => {
+  const response = await userStore.shareChat(chat._id);
+  console.log(response);
+  if (response.error) {
+    MyToast.error(response.error); // Optionally show a toast message
+    return;
+  }
+  const sharedConversationId = response.sharedConversationId;
+
+  const link = `${MyHttpService.FRONT_END_URL}sharedChats/${sharedConversationId}`; // Construct the post link
+  try {
+    await navigator.clipboard.writeText(link);
+
+    MyToast.success("Link copied to clipboard!");
+  } catch (error) {
+    // Show error toast if copying fails
+    MyToast.error("Failed to copy link to clipboard.");
+  }
+};
+
+
 </script>

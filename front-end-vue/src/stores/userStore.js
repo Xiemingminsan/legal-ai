@@ -24,7 +24,7 @@ export const useUserStore = defineStore('userStore', () => {
 
   async function createBot(formData) {
     try {
-      console.log(formData);
+      console.log(formData)
       const response = await MyHttpService.post('/bots/add', { useJWT: true, body: formData })
 
       // If response contains error, return that immediately
@@ -128,6 +128,45 @@ export const useUserStore = defineStore('userStore', () => {
     }
   }
 
+  async function shareChat(conversationId) {
+    try {
+      const response = await MyHttpService.post(`/chat/shareChat`, {
+        useJWT: true,
+        query: { conversationId: conversationId },
+      })
+      console.log(response)
+      // If response contains error, return that immediately
+      if (response.error) {
+        return { error: response.error || 'Unable To Get Shared Chat Likn' }
+      }
+
+      return response
+    } catch (err) {
+      console.error(err) // Log the error in the console
+
+      return { error: 'Internal Error' }
+    }
+  }
+
+  async function getSharedConversation(sharedConversationId) {
+    try {
+      const response = await MyHttpService.get(`/chat/getSharedConversation`, {
+        useJWT: true,
+        query: { sharedConversationId: sharedConversationId },
+      })
+      console.log(response)
+      // If response contains error, return that immediately
+      if (response.error) {
+        return { error: response.error || 'Unable To Get Conversation' }
+      }
+
+      return response
+    } catch (err) {
+      console.error(err) // Log the error in the console
+
+      return { error: 'Internal Error' }
+    }
+  }
   return {
     getAllValidDocuments,
     getRecentChats,
@@ -136,5 +175,7 @@ export const useUserStore = defineStore('userStore', () => {
     createNewChat,
     askAi,
     createBot,
+    shareChat,
+    getSharedConversation,
   }
 })
