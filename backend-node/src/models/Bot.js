@@ -12,7 +12,7 @@ const BotSchema = new mongoose.Schema({
   },
   icon: {
     type: String,
-    default: 'default.png'
+    default: '/bot.png'
   },
   type: {
     type: String,

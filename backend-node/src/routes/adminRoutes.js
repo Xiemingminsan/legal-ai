@@ -39,7 +39,11 @@ router.get("/getServerHealth", async (req, res) => {
       },
     };
 
-    const systemPrompt = await SystemPrompt.findOne({});
+    const systemPrompt = await SystemPrompt.findOneAndUpdate(
+      {}, // Empty query to find the first document
+      { $setOnInsert: { prompt: "You are a helpful AI assistant to provide Ethiopian Law based legal advice and information." } }, // Default prompt if not found
+      { new: true, upsert: true } // upsert: true will create a new document if none is found
+    );
 
     res.json({ serverHealth: serverHealth, systemPrompt: systemPrompt.prompt });
   } catch (error) {
@@ -189,7 +193,7 @@ router.get("/getAllBots", async (req, res) => {
 
     // Filter bots into primary and user bots
     const primaryBots = bots.filter((bot) => bot.type === "primary");
-    const userBots = bots.filter((bot) => ["custom", "private"].includes(bot.type));
+    const userBots = bots.filter((bot) => ["private", "public"].includes(bot.type));
 
     res.json({
       primaryBots,

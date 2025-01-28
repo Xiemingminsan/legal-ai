@@ -13,7 +13,7 @@
     <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
       <div class="flex flex-col md:flex-row md:items-center md:justify-between">
         <div class="flex items-center space-x-4">
-          <img :src="'/' + bot.icon || '/bot.png'" :alt="bot.name" class="h-20 w-20 rounded-full object-cover">
+          <img :src="bot.icon || '/bot.png'" class="h-20 w-20 rounded-full object-cover">
           <div>
             <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ bot.name }}</h1>
             <p class="text-gray-600 dark:text-gray-300">{{ bot.description }}</p>

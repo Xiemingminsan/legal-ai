@@ -68,8 +68,7 @@ onMounted(() => {
         <button @click="onBack" class="mr-4 md:hidden">
           <i class="ri-arrow-left-line h-6 w-6 text-gray-600 dark:text-gray-400"></i>
         </button>
-        <img :src="botDetails.icon ? '/' + botDetails.icon : '/bot.png'" alt="bot icon"
-          class="w-12 h-12 rounded-full mr-4" />
+        <img :src="botDetails.icon || '/bot.png'" alt="bot icon" class="w-12 h-12 rounded-full mr-4" />
         <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200">{{ botDetails.name }}</h2>
       </div>
 

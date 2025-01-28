@@ -185,7 +185,7 @@ const askAi = async () => {
       <button @click="onBack" class="mr-4 md:hidden">
         <i class="ri-arrow-left-line h-6 w-6 text-gray-600 dark:text-gray-400"></i>
       </button>
-      <img :src="chat.bot?.icon ? '/' + chat.bot.icon : '/bot.png'" alt="bot icon"
+      <img :src="chat.bot?.icon ? chat.bot.icon : '/bot.png'" alt="bot icon"
         class="w-12 h-12 rounded-full mr-4" />
       <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200">{{ chat.bot.name }}</h2>
       <div class="flex-grow"></div>

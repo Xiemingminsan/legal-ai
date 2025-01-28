@@ -11,7 +11,7 @@
     <div class="p-4">
       <div class="flex items-center space-x-4">
         <div class="flex-shrink-0">
-          <img :src="'/' + bot.icon || '/bot.png'" :alt="bot.name" class="h-12 w-12 rounded-full object-cover">
+          <img :src=" bot.icon || '/bot.png'" class="h-12 w-12 rounded-full object-cover">
         </div>
         <div class="flex-1 min-w-0">
           <router-link :to="`/admin/bot/${bot._id}`"

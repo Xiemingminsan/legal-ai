@@ -14,7 +14,7 @@
       <BuyPremiumBtn />
     </div>
     <div class="aspect-square">
-      <img :src="'/' + bot.icon" :alt="bot.name" class="w-full h-full object-cover" />
+      <img :src="'/' + bot?.icon ? bot.icon : '/bot.png'" class="w-full h-full object-cover" />
     </div>
     <div class="p-4">
       <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">{{ bot.name }}</h3>
