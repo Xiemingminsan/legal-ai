@@ -1,6 +1,26 @@
-// src/models/User.js
 const mongoose = require("mongoose");
 
+// Define PaymentHistory Schema
+const PaymentHistorySchema = new mongoose.Schema(
+  {
+    amount: {
+      type: Number,
+      required: true, // Payment amount
+    },
+    start_date: {
+      type: Date,
+      default: Date.now, // Start date
+    },
+    end_date: {
+      type: Date,
+      default: function() {
+        return new Date(this.start_date.getTime() + 30*24*60*60*1000); // End date is 30 days from start date
+      },
+    },
+  },
+);
+
+// Define User Schema
 const UserSchema = new mongoose.Schema(
   {
     username: {
@@ -43,6 +63,10 @@ const UserSchema = new mongoose.Schema(
       type: String,
       enum: ["Not Comfortable", "Somewhat Comfortable", "Very Comfortable"],
       required: false,
+    },
+    paymentHistory: {
+      type: [PaymentHistorySchema], // Embed payment history
+      default: [],
     },
   },
   { timestamps: true }
