@@ -160,12 +160,39 @@ router.get("/getDashboardData", async (req, res) => {
       .select("username fullname email createdAt");
 
     // Trending bots - top 5 bots with random usersInteracted count
-    const trendingBots = await Bot.find().limit(5);
-    const botsWithInteractions = trendingBots.map((bot) => ({
-      _id: bot._id,
-      name: bot.name,
-      usersInteracted: Math.floor(Math.random() * 500), // Random number for usersInteracted
-    }));
+    const trendingBots = await ChatHistory.aggregate([
+      {
+        $match: {
+          createdAt: {
+            $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // Last 7 days
+          }
+        }
+      },
+      {
+        $group: {
+          _id: "$botId", // Group by botId
+          usersInteracted: { $addToSet: "$userId" } // Collect unique userIds
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          usersInteractedCount: { $size: "$usersInteracted" } // Count unique user interactions
+        }
+      },
+      {
+        $sort: { usersInteractedCount: -1 } // Sort by number of unique users
+      },
+      {
+        $limit: 10 // Top 10 bots
+      }
+    ]);
+    
+    // Now populate bot data
+    const botsWithInteractions = await Bot.populate(trendingBots, {
+      path: "_id",
+      select: "name icon"
+    });
 
     // Prepare response data
     const dashboardData = {

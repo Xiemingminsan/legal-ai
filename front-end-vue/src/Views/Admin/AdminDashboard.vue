@@ -36,19 +36,19 @@
     <!-- User Activity and Recent Sign-ups -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <!-- Trending Recent Bots -->
-      <div class="bg-white dark:bg-gray-800  h-[calc(100%-300px)] p-6 rounded-lg shadow-md">
+      <div class="bg-white dark:bg-gray-800  h-full p-6 rounded-lg shadow-md">
         <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Trending Recent Bots</h2>
         <div class="space-y-4">
-          <div v-for="bot in trendingBots" :key="bot.id" class="flex items-center space-x-4">
+          <div v-for="bot in trendingBots" :key="bot._id" class="flex items-center space-x-4">
             <div class="flex-shrink-0">
-              <img :src="bot.avatar || '/bot.png'" alt="/bot.png" class="h-10 w-10 rounded-full">
+              <img :src="bot._id?.icon || '/bot.png'" class="h-10 w-10 rounded-full">
             </div>
             <div class="flex-1 min-w-0">
               <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
-                {{ bot.name }}
+                {{ bot._id?.name }}
               </p>
               <p class="text-sm text-gray-500 dark:text-gray-400 truncate">
-                {{ bot.usersInteracted }} users interacted
+                {{ bot.usersInteractedCount }} users interacted
               </p>
             </div>
             <div class="inline-flex items-center text-sm text-gray-500 dark:text-gray-400">
@@ -95,7 +95,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, computed } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import DashboardCard from '@/components/Admin/DashboardCard.vue';
 import Chart from 'chart.js/auto';
 import { useAdminStore } from '@/stores/adminStore';
