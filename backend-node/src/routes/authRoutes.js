@@ -207,6 +207,7 @@ router.post("/deleteAccount", authMiddleware, async (req, res) => {
   try {
     const userId = req.user.userId;
 
+    console.log("Deleting account of user:", userId);
     // Find the user in the database
     const user = await User.findById(userId);
     if (!user) {

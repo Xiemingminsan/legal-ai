@@ -20,7 +20,7 @@ const authMiddleware = (req, res, next) => {
     next(); // Proceed to the next middleware or route handler
   } catch (err) {
     console.error('Token verification failed:', err.message);
-    return res.status(401).json({ msg: 'Invalid token' });
+    return res.status(410).json({ msg: 'Invalid token' });
   }
 };
 
