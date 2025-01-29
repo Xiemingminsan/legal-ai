@@ -136,6 +136,8 @@ export const useAuthStore = defineStore('auth', () => {
     token,
     isAuthenticated,
     proAccount,
+    role,
+    username,
     setUser,
     clearUser,
     login,

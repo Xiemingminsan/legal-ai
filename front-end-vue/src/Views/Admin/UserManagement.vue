@@ -188,6 +188,8 @@ const suspendUser = async (userId) => {
     MyToast.error(response.error); // Optionally show a toast message
     return;
   }
+
+  users.value = users.value.filter(user => user._id !== userId);
   MyToast.success(response.msg);
 };
 

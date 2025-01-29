@@ -6,7 +6,7 @@
   </div>
 
   <!-- Error state -->
-  <ErrorRetryComp v-else-if="error" :errorMessage="error" :onRetry="getServerHealth" />
+  <ErrorRetryComp v-else-if="error" :errorMessage="error" :onRetry="getAllBots" />
   <!-- if Page Loadded -->
   <div v-else class="space-y-8">
     <!-- Primary Bots Section -->

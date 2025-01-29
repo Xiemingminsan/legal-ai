@@ -1,6 +1,6 @@
 <template>
   <!-- Loading state -->
-  <div v-if="isLoading" class="flex justify-center items-center">
+  <div v-if="isLoading" class="flex justify-center items-center mt-48">
     <LoadingSpinner />
   </div>
 
