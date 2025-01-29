@@ -79,6 +79,8 @@
       </div>
     </section>
 
+    <LawFirms />
+
     <!-- Terms of Service Section -->
     <section id="tos" class="py-20">
       <div class="container mx-auto px-4">
@@ -120,6 +122,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { MailIcon, PhoneIcon, MapPinIcon, BookOpenIcon, ScaleIcon, MessageCircleIcon } from 'lucide-vue-next'
+import LawFirms from './LawFirms.vue';
 
 const slides = [
   {
