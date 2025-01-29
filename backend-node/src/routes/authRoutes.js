@@ -21,7 +21,7 @@ router.post("/signup", async (req, res) => {
 
     console.log(req.body);
     // Validate input
-    if (!username || !email || !password) {
+    if (!username || !email || !password || !fullname) {
       return res.status(400).json({ msg: "All fields are required" });
     }
 
@@ -157,6 +157,8 @@ router.post("/changePassword", authMiddleware, async (req, res) => {
     if (!isMatch) {
       return res.status(400).json({ msg: "Current password is incorrect" });
     }
+
+
 
     // Hash the new password
     const salt = await bcrypt.genSalt(10);

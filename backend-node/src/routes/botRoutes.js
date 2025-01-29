@@ -32,7 +32,7 @@ const upload = multer({
 router.post("/add", authMiddleware, upload.array("files"), async (req, res) => {
   try {
     console.log("req.body", req.body);
-    const { name, description, icon, visibility, systemPrompt, documentIds, categories } =
+    let { name, description, icon, visibility, systemPrompt, documentIds, categories } =
       req.body;
     const metadata = JSON.parse(req.body.metadata || "[]");
 
@@ -44,6 +44,7 @@ router.post("/add", authMiddleware, upload.array("files"), async (req, res) => {
     if (visibility === "private") {
       type = "private";
     } else if (visibility === "public" && req.user.role === "admin") {
+      visibility = "primary";
       type = "primary";
     } else {
       type = "public";
@@ -132,7 +133,7 @@ router.post("/add", authMiddleware, upload.array("files"), async (req, res) => {
 router.get("/", authMiddleware, async (req, res) => {
   try {
     // Get primary bots
-    const primaryBots = await Bot.find({ type: "primary" }).populate("documents");
+    const primaryBots = await Bot.find({ visibility: "primary" }).populate("documents");
 
     // Get public custom bots
     const publicCustomBots = await Bot.find({

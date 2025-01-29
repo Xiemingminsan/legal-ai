@@ -123,6 +123,7 @@ router.post("/ask-ai", authMiddleware, upload.single("file"), async (req, res) =
       ...(conversation.conversation?.slice(-20) || []).map(msg => {
         let msgText = `${msg.role}: ${msg.text}`;
         if (msg.file && counter == true) {
+          console.log("File content found in context:", msg.file);
           msgText += `\n This is the File or Image content the user sent inline from the chat and is additonal context, If found no answer from the normal context, refer to this and check as well: ${msg.file}`;
         }
         return msgText;

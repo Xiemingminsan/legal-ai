@@ -26,7 +26,7 @@ const BotSchema = new mongoose.Schema({
   },
   visibility: {
     type: String,
-    enum: ['public', 'private'],
+    enum: ['public', 'private','primary'],
     default: 'private'
   },
   systemPrompt: {
