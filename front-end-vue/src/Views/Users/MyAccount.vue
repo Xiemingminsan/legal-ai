@@ -171,6 +171,36 @@
               <span class="flex gap-5 justify-between w-[220px]">Change Theme
                 <DarkModeToggle />
               </span>
+
+              <div>
+                <!-- Delete Button -->
+                <button
+                  class="flex items-center bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                  @click="confirmDelete">
+                  <i class="ri-delete-bin-line mr-2"></i>
+                  Delete Account
+                </button>
+
+                <!-- Confirmation Popup -->
+                <div v-if="showConfirmation"
+                  class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+                  <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg">
+                    <p class="text-lg mb-4">Are you sure you want to delete this Account?</p>
+                    <div class="flex justify-end space-x-4">
+                      <button
+                        class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                        @click="cancelDelete">
+                        Cancel
+                      </button>
+                      <button
+                        class="bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                        @click="deleteFunction">
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
             <!-- Add settings fields or options here -->
           </div>
@@ -259,4 +289,34 @@ const handlePasswordChange = async () => {
   router.push('/signin');
 
 };
+
+
+
+const showConfirmation = ref(false);
+
+// Function to show the confirmation popup
+const confirmDelete = () => {
+  showConfirmation.value = true;
+};
+
+// Function to cancel the delete action
+const cancelDelete = () => {
+  showConfirmation.value = false;
+};
+
+// Function to handle the delete action
+const deleteFunction = () => {
+  const response = authStore.deleteAccount();
+
+  if (response.error) {
+    MyToast.error(response.error);
+    return;
+  }
+
+  MyToast.success("Account Deleted");
+  authStore.logout();
+  router.push('/signin');
+
+};
+
 </script>
