@@ -4,7 +4,7 @@
 
       <!-- Loading state -->
       <div v-if="isLoading" class="flex justify-center items-center">
-        <div class="animate-spin border-t-2 border-blue-600 border-solid rounded-full w-8 h-8"></div>
+        <LoadingSpinner />
       </div>
 
       <!-- Error state -->
@@ -108,6 +108,7 @@ import { ref, onMounted, computed } from 'vue';
 import { useAdminStore } from '@/stores/adminStore';
 import { MyToast } from '@/utils/toast';
 import ErrorRetryComp from '@/components/Basics/ErrorRetryComp.vue';
+import LoadingSpinner from '@/components/Basics/LoadingSpinner.vue';
 
 
 const adminStore = useAdminStore();

@@ -1,7 +1,7 @@
 <template>
   <!-- Loading state -->
   <div v-if="isLoading" class="flex justify-center items-center min-h-screen">
-    <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500"></div>
+    <LoadingSpinner />
   </div>
 
   <!-- Error state -->
@@ -52,6 +52,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { MyToast } from '@/utils/toast';
 import ErrorRetryComp from '@/components/Basics/ErrorRetryComp.vue';
 import BuyPremiumBtn from '@/components/User/BuyPremiumBtn.vue';
+import LoadingSpinner from '@/components/Basics/LoadingSpinner.vue';
 
 const userStore = useUserStore();
 const authStore = useAuthStore();

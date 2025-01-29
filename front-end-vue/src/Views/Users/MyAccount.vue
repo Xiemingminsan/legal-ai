@@ -6,7 +6,7 @@
 
       <!-- Loading state -->
       <div v-if="isLoading" class="flex justify-center items-center mt-52">
-        <div class="animate-spin border-t-2 border-blue-600 border-solid rounded-full w-8 h-8"></div>
+        <LoadingSpinner />
       </div>
 
       <!-- Error state -->
@@ -193,6 +193,7 @@ import { MyUtils } from "@/utils/Utils";
 import { useAuthStore } from '@/stores/authStore';
 import { useRouter } from 'vue-router';
 import { MyToast } from '@/utils/toast';
+import LoadingSpinner from "@/components/Basics/LoadingSpinner.vue";
 
 const router = useRouter();
 const authStore = useAuthStore();

@@ -6,6 +6,7 @@ import ErrorRetryComp from '@/components/Basics/ErrorRetryComp.vue';
 import MessageBubble from '@/components/User/Chat/MessageBubble.vue';
 import { setNavBarShowState } from '@/utils/Utils';
 import { useAuthStore } from '@/stores/authStore';
+import LoadingSpinner from '@/components/Basics/LoadingSpinner.vue';
 const authStore = useAuthStore();
 const props = defineProps({
   chat: {
@@ -205,7 +206,7 @@ const askAi = async () => {
     <div class="flex-grow overflow-y-scroll  scrollable-div" ref="messagesContainer">
       <!-- Loading state -->
       <div v-if="isLoading" class="flex justify-center items-center mt-32">
-        <div class="animate-spin border-t-2 border-blue-600 border-solid rounded-full w-8 h-8"></div>
+        <LoadingSpinner />
       </div>
 
       <!-- Error state -->
@@ -252,42 +253,47 @@ const askAi = async () => {
     <!-- @todo reponsviness -->
     <!-- Input Areaa -->
     <form @submit.prevent="askAi"
-      class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4  md:mb-0">
-      <div class="flex items-center gap-2">
+      class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 md:mb-0 shadow-lg rounded-lg">
+      <div class="flex items-center gap-3">
         <!-- Language Dropdown -->
         <select v-model="selectedLanguage"
-          class="px-2 rounded-lg border border-gray-300 dark:border-gray-600 rounded-l-lg py-2 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:bg-gray-700 dark:text-gray-200">
-          <option value="en">Eng</option>
-          <option value="amh">Amh</option>
+          class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:bg-gray-700 dark:text-gray-200 transition duration-200 ease-in-out"
+          aria-label="Select language">
+          <option value="en">English</option>
+          <option value="amh">Amharic</option>
         </select>
 
         <!-- Message Input -->
-        <input v-model="messageToSend" type="text" placeholder="Type your message..."
-          class="flex-1 rounded-lg border-t border-b border-r border-gray-300 dark:border-gray-600 py-2 px-4 focus:outline-none focus:ring-1 focus:ring-gray-500 dark:bg-gray-700 dark:text-gray-200" />
+        <div class="relative flex-1">
+          <input v-model="messageToSend" type="text" placeholder="Type your message..."
+            class="w-full rounded-lg border border-gray-300 dark:border-gray-600 py-2 px-4 pr-10 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:bg-gray-700 dark:text-gray-200 transition duration-200 ease-in-out"
+            aria-label="Message input" />
+
+          <!-- Send Button (inside input) -->
+          <button type="submit"
+            class="absolute right-2 top-1/2 transform -translate-y-1/2 text-sky-500 hover:text-sky-600 focus:outline-none"
+            aria-label="Send message">
+            <i class="ri-send-plane-2-line text-xl"></i>
+          </button>
+        </div>
 
         <!-- File Upload Button with Pro Label -->
-        <div class="relative inline-block">
-          <label for="file-upload"
-            class="cursor-pointer block p-2 rounded-md transition-colors duration-200 text-center" :class="[
-              authStore.proAccount
-                ? 'bg-sky-500 hover:bg-sky-600 text-white'
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-            ]">
+        <div class="relative">
+          <label for="file-upload" :class="[
+            'cursor-pointer flex items-center justify-center w-10 h-10 rounded-full transition-colors duration-200',
+            authStore.proAccount
+              ? 'bg-sky-500 hover:bg-sky-600 text-white'
+              : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+          ]" aria-label="Upload file">
             <i :class="[fileUploaded ? 'ri-check-line' : 'ri-upload-cloud-2-line', 'text-lg']"></i>
           </label>
           <input id="file-upload" type="file" class="hidden" :disabled="!authStore.proAccount"
             accept=".txt,.doc,.docx,.pdf,image/*" @change="onFileChange" />
           <span v-if="!authStore.proAccount"
-            class="absolute -top-2 -right-2 bg-yellow-500 text-xs text-white font-bold px-1 rounded-full">
+            class="absolute -top-2 -right-2 bg-yellow-500 text-xs text-white font-bold px-1.5 py-0.5 rounded-full">
             PRO
           </span>
         </div>
-
-        <!-- Send Button -->
-        <button type="submit"
-          class="bg-sky-500 text-white rounded-r-lg py-2 px-5 hover:bg-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-500">
-          <i class="ri-send-plane-2-line h-5 w-5"></i>
-        </button>
       </div>
     </form>
   </div>

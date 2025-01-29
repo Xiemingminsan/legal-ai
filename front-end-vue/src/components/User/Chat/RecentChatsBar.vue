@@ -6,6 +6,7 @@ import { useUserStore } from '@/stores/userStore';
 import { MyToast } from '@/utils/toast';
 import ErrorRetryComp from '@/components/Basics/ErrorRetryComp.vue';
 import { useRoute } from 'vue-router';
+import LoadingSpinner from '@/components/Basics/LoadingSpinner.vue';
 
 
 const route = useRoute();
@@ -112,7 +113,7 @@ const onBack = () => {
     ]">
       <!-- Loading state -->
       <div v-if="isLoading" class="flex justify-center items-center mt-32">
-        <div class="animate-spin border-t-2 border-blue-600 border-solid rounded-full w-8 h-8"></div>
+        <LoadingSpinner />
       </div>
 
       <!-- Error state -->
