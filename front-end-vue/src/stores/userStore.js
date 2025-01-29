@@ -148,6 +148,8 @@ export const useUserStore = defineStore('userStore', () => {
     }
   }
 
+
+
   async function shareChat(conversationId) {
     try {
       const response = await MyHttpService.post(`/chat/shareChat`, {

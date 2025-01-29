@@ -132,12 +132,31 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function deleteAccount() {
+    try {
+      const response = await MyHttpService.post(`/auth/deleteAccount`, {
+        useJWT: true,
+      })
+      console.log(response)
+      // If response contains error, return that immediately
+      if (response.error) {
+        return { error: response.error || 'Unable To Delete Account' }
+      }
+
+      return response
+    } catch (err) {
+      console.error(err) // Log the error in the console
+
+      return { error: 'Internal Error' }
+    }
+  }
   return {
     token,
     isAuthenticated,
     proAccount,
     role,
     username,
+    deleteAccount,
     setUser,
     clearUser,
     login,
