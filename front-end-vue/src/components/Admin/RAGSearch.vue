@@ -32,7 +32,7 @@
 
     </form>
     <div v-if="searchResults.length > 0" class="space-y-4">
-      <div class="space-y-4">
+      <div class="space-y-4 grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 gap-4">
         <div v-for="result in searchResults" :key="result.doc_id"
           class="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden">
           <div class="p-4 border-b border-gray-200 dark:border-gray-700">
@@ -47,7 +47,6 @@
           </div>
 
           <div class="p-4">
-
             <div class="mt-4 flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400">
               <div class="flex items-center">
                 <i class="ri-calendar-line mr-2 text-gray-400 dark:text-gray-500"></i>
@@ -82,7 +81,7 @@ const props = defineProps({
     required: true
   }
 });
-const performSearch = async () => {
+const performSearch= async () => {
   try {
     const formData = new URLSearchParams();
     formData.append("query", searchQuery.value);
