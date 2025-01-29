@@ -10,7 +10,8 @@ const ChatMessageSchema = new mongoose.Schema({
     filename: { type: String }, // Optional
     filetype: { type: String }, // Optional
     fileSize: { type: Number }, // Optional
-    filedownloadUrl: { type: String } // Optional
+    filedownloadUrl: { type: String } ,// Optional
+    processedContent : { type: String }
   }
 });
 

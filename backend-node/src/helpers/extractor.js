@@ -1,13 +1,16 @@
-// Enhanced parsePDF function
+// src/helpers/extractor.js
+const fs = require('fs').promises;  // Use promises version of fs
+const path = require('path');
 const pdf = require('pdf-parse');
 const sharp = require('sharp');
 
+// PDF Parser
 const parsePDF = async (filePath) => {
   try {
-    const dataBuffer = fs.readFileSync(filePath);
+    // Read file as buffer
+    const dataBuffer = await fs.readFile(filePath);
     const data = await pdf(dataBuffer);
     
-    // Additional error checking
     if (!data || !data.text) {
       throw new Error('PDF parsing resulted in empty content');
     }
@@ -19,13 +22,15 @@ const parsePDF = async (filePath) => {
     };
   } catch (error) {
     console.error("Error parsing PDF:", error);
-    throw error; // Propagate error for proper handling
+    throw new Error(`PDF processing failed: ${error.message}`);
   }
 };
 
-const processTxt = (filePath) => {
+// Text file processor
+const processTxt = async (filePath) => {
   try {
-    const text = fs.readFileSync(filePath, 'utf8');
+    // Read file as text
+    const text = await fs.readFile(filePath, 'utf8');
     
     // Get text statistics
     const charCount = text.length;
@@ -33,7 +38,7 @@ const processTxt = (filePath) => {
     const wordCount = text.split(/\s+/).filter(Boolean).length;
     
     // Get file stats
-    const stats = fs.statSync(filePath);
+    const stats = await fs.stat(filePath);
     
     return {
       text: text,
@@ -52,11 +57,11 @@ const processTxt = (filePath) => {
   }
 };
 
-// Image processing function
+// Image processor
 const processImage = async (filePath, mimeType) => {
   try {
     // Read the image file
-    const imageBuffer = await fs.promises.readFile(filePath);
+    const imageBuffer = await fs.readFile(filePath);
     
     // Convert image to base64
     const base64Image = imageBuffer.toString('base64');
@@ -75,49 +80,53 @@ const processImage = async (filePath, mimeType) => {
     };
   } catch (error) {
     console.error("Error processing image:", error);
-    throw error;
+    throw new Error(`Image processing failed: ${error.message}`);
   }
 };
 
-// Enhanced file processor
+// Main file processor
 const processUploadedFile = async (file) => {
   const { mimetype, path: filePath } = file;
   
   try {
-    if (mimetype === 'application/pdf') {
-      const pdfData = await parsePDF(filePath);
-      return {
-        type: 'pdf',
-        content: pdfData.text,
-        metadata: {
-          pageCount: pdfData.pageCount,
-          ...pdfData.metadata
-        }
-      };
-    } else if (mimetype.startsWith('image/')) {
-      const imageData = await processImage(filePath, mimetype);
-      return {
-        type: 'image',
-        content: imageData.base64,
-        metadata: imageData.metadata,
-        mimeType: imageData.mimeType
-      };
-    } else if (mimetype === 'text/plain') {
-      const txtData = processTxt(filePath);
-      return {
-        type: 'text',
-        content: txtData.text,
-        metadata: {
-          fileName: path.basename(filePath),
-          ...txtData.metadata
-        }
-      };
+    console.log(`Processing file: ${filePath} with mime type: ${mimetype}`);
+
+    // Define supported mime types
+    const supportedTypes = {
+      'application/pdf': parsePDF,
+      'text/plain': processTxt,
+      'image/jpeg': processImage,
+      'image/png': processImage,
+      'image/jpg': processImage,
+    };
+
+    // Check if mime type is supported
+    const processor = supportedTypes[mimetype];
+    if (!processor) {
+      throw new Error(`Unsupported file type: ${mimetype}`);
     }
-       
-    throw new Error(`Unsupported file type: ${mimetype}`);
+
+    // Process the file based on its type
+    const result = await processor(filePath, mimetype);
+
+    // Return standardized response
+    return {
+      type: mimetype.split('/')[0], // 'application' -> 'pdf', 'image' -> 'image', etc.
+      content: result.text || result.base64, // text for documents, base64 for images
+      metadata: result.metadata,
+      mimeType: mimetype
+    };
+
   } catch (error) {
     console.error(`Error processing file: ${error.message}`);
     throw error;
+  } finally {
+    // Cleanup: Remove the temporary file
+    try {
+      await fs.unlink(filePath);
+    } catch (cleanupError) {
+      console.error(`Failed to cleanup file ${filePath}:`, cleanupError);
+    }
   }
 };
 

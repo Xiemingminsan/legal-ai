@@ -24,11 +24,19 @@ const storage = multer.diskStorage({
 
 // File filter to allow specific file types (optional)
 const fileFilter = (req, file, cb) => {
-  const allowedTypes = ["image/jpeg", "image/png", "application/pdf"]; // Example allowed types
+  const allowedTypes = [
+    'application/pdf',
+    'text/plain',
+    'image/jpeg',
+    'image/png',
+    'image/jpg',
+    'text/docx',
+  ];
+  
   if (allowedTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error("File type not allowed"), false);
+    cb(new Error(`File type not allowed. Supported types: DOCX, PDF, TXT, JPG, JPEG, PNG`), false);
   }
 };
 
@@ -73,6 +81,8 @@ router.post("/ask-ai", authMiddleware, upload.single("file"), async (req, res) =
           filedownloadUrl: `uploads/userChatUpload/${req.file.filename}`,
           processedContent: processedFile
         };
+
+        console.log("File processed successfully:", processedFile);
       } catch (error) {
         console.error("File processing error:", error);
         return res.status(400).json({ msg: "Error processing uploaded file" });
