@@ -3,18 +3,18 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex items-center justify-between h-16">
         <div class="flex items-center">
-          <div class="flex-shrink-0">
+          <a href="/land" class="flex-shrink-0">
             <img class="h-14 w-14 " src="/logo.png" alt="Legal Bot Ethio AI Logo" />
-          </div>
-          <div class="hidden md:block text-md">
+          </a>
+          <div v-if="!hideNavLinks" class="hidden md:block text-md">
             <div class="ml-10 flex items-baseline space-x-4 font-light text-md">
-              <router-link :to="`#services`"
+              <a href="#services"
                 class="text-gray-800 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 px-3 py-2 rounded-md ">Our
-                Services</router-link>
-              <router-link :to="`about`"
-                class="text-gray-800 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 px-3 py-2 rounded-md ">About</router-link>
-              <router-link :to="`#contact`"
-                class="text-gray-800 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 px-3 py-2 rounded-md ">Contact</router-link>
+                Services</a>
+              <a href="#about"
+                class="text-gray-800 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 px-3 py-2 rounded-md ">About</a>
+              <a href="#contact"
+                class="text-gray-800 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 px-3 py-2 rounded-md ">Contact</a>
             </div>
           </div>
         </div>
@@ -37,20 +37,19 @@
       </div>
     </div>
     <div :class="{ 'block': isOpen, 'hidden': !isOpen }" class="md:hidden" id="mobile-menu">
-      <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-        <router-link :to="`/land#services`"
+      <div v-if="!hideNavLinks" class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+        <a href="`/land#services`"
           class="text-gray-800 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 block px-3 py-2 rounded-md text-base font-medium">
           Our Services
-        </router-link>
-        <router-link :to="`/land#about`"
+        </a>
+        <a href="`/land#about`"
           class="text-gray-800 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 block px-3 py-2 rounded-md text-base font-medium">
           About
-        </router-link>
-        <router-link :to="`/land#contact`"
+        </a>
+        <a href="`/land#contact`"
           class="text-gray-800 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 block px-3 py-2 rounded-md text-base font-medium">
           Contact
-        </router-link>
-
+        </a>
       </div>
       <div class="pt-4 pb-3 border-t border-gray-200 dark:border-gray-700">
         <div class="flex items-center px-5">
@@ -69,6 +68,13 @@
 import { ref } from 'vue'
 import { MenuIcon, XIcon } from 'lucide-vue-next'
 import DarkModeToggle from '@/components/Basics/DarkModeToggle.vue';
+
+defineProps({
+  hideNavLinks: {
+    type: Boolean,
+    default: false
+  }
+})
 
 const isOpen = ref(false)
 
