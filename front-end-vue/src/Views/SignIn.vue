@@ -86,8 +86,12 @@ const handleLogin = async () => {
     MyToast.error(response.error);
     return;
   }
-
-  router.push('/explore'); // Redirect to the homepage on success
+  console.log(response)
+  if(response.role == 'admin') {
+    router.push('admin/dashboard');
+  } else {
+    router.push('explore');
+  }
   MyToast.success("Logged In Successfully");
 };
 

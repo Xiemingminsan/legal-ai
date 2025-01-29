@@ -3,8 +3,7 @@
   <!-- Wrapper for Loading and Error states -->
   <div v-if="isLoading" class="absolute inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
     <!-- Loading state -->
-    <div class="animate-spin border-t-2 border-blue-600 border-solid rounded-full w-8 h-8">
-    </div>
+    <LoadingSpinner />
   </div>
 
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
@@ -51,6 +50,7 @@ import { computed, ref } from 'vue';
 import { useUserStore } from '@/stores/userStore';
 import { MyToast } from '@/utils/toast';
 import { useRouter } from 'vue-router';
+import LoadingSpinner from '../Basics/LoadingSpinner.vue';
 const router = useRouter();
 
 const userStore = useUserStore();

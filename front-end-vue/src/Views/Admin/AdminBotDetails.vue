@@ -1,7 +1,7 @@
 <template>
   <!-- Loading state -->
-  <div v-if="isLoading" class="flex justify-center items-center">
-    <div class="animate-spin border-t-2 border-blue-600 border-solid rounded-full w-8 h-8"></div>
+  <div v-if="isLoading" class="flex justify-center items-center mt-48">
+    <LoadingSpinner />
   </div>
 
   <!-- Error state -->
@@ -102,6 +102,7 @@ import AdminUploadedDocuments from '@/components/Admin/AdminUploadedDocuments.vu
 import { useAdminStore } from '@/stores/adminStore';
 import { MyToast } from '@/utils/toast';
 import ErrorRetryComp from '@/components/Basics/ErrorRetryComp.vue';
+import LoadingSpinner from '@/components/Basics/LoadingSpinner.vue';
 
 const route = useRoute();
 const router = useRouter();

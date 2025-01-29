@@ -1,5 +1,4 @@
 <template>
-
   <div v-if="!authStore.proAccount" class="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
     <div class="text-center p-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg max-w-md w-full">
       <div class="mb-6">

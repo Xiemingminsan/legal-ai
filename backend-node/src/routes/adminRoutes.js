@@ -41,7 +41,12 @@ router.get("/getServerHealth", async (req, res) => {
 
     const systemPrompt = await SystemPrompt.findOneAndUpdate(
       {}, // Empty query to find the first document
-      { $setOnInsert: { prompt: "You are a helpful AI assistant to provide Ethiopian Law based legal advice and information." } }, // Default prompt if not found
+      {
+        $setOnInsert: {
+          prompt:
+            "You are a helpful AI assistant to provide Ethiopian Law based legal advice and information.",
+        },
+      }, // Default prompt if not found
       { new: true, upsert: true } // upsert: true will create a new document if none is found
     );
 
@@ -103,19 +108,23 @@ router.post("/suspendUser", async (req, res) => {
       return res.status(400).json({ msg: "User ID is required" });
     }
 
-    // // Find and delete the user by ID
-    // const deletedUser = await User.findByIdAndDelete(userId);
+    // Find the user in the database
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
 
-    // if (!deletedUser) {
-    //   return res.status(404).json({ msg: "User not found" });
-    // }
+    // Delete the user
+    await User.findByIdAndDelete(userId);
 
-    res.json({ msg: "Implement Mee Backend /suspendUser" });
+    res.json({ msg: "User deleted successfully" });
   } catch (error) {
     console.error("Error Suspending user:", error.message);
     res.status(500).json({ msg: "Server error Suspending user" });
   }
 });
+
+
 
 router.get("/getDashboardData", async (req, res) => {
   try {
@@ -164,34 +173,34 @@ router.get("/getDashboardData", async (req, res) => {
       {
         $match: {
           createdAt: {
-            $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // Last 7 days
-          }
-        }
+            $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // Last 7 days
+          },
+        },
       },
       {
         $group: {
           _id: "$botId", // Group by botId
-          usersInteracted: { $addToSet: "$userId" } // Collect unique userIds
-        }
+          usersInteracted: { $addToSet: "$userId" }, // Collect unique userIds
+        },
       },
       {
         $project: {
           _id: 1,
-          usersInteractedCount: { $size: "$usersInteracted" } // Count unique user interactions
-        }
+          usersInteractedCount: { $size: "$usersInteracted" }, // Count unique user interactions
+        },
       },
       {
-        $sort: { usersInteractedCount: -1 } // Sort by number of unique users
+        $sort: { usersInteractedCount: -1 }, // Sort by number of unique users
       },
       {
-        $limit: 10 // Top 10 bots
-      }
+        $limit: 10, // Top 10 bots
+      },
     ]);
-    
+
     // Now populate bot data
     const botsWithInteractions = await Bot.populate(trendingBots, {
       path: "_id",
-      select: "name icon"
+      select: "name icon",
     });
 
     // Prepare response data
@@ -257,22 +266,25 @@ router.get("/getBot", async (req, res) => {
   }
 });
 
-router.post("/deleteBot", async (req, res) => {
+router.post("/deleteBot", authMiddleware, async (req, res) => {
   try {
+    const userId = req.user.userId;
+    const userRole = req.user.role;
     const { botId } = req.body; // Get the botId from the query parameters
 
     if (!botId) {
       return res.status(400).json({ msg: "Bot ID is required" });
     }
-    //@todo delte properly
-    // Find and delete the bot by its ID
-    // const deletedBot = await Bot.findByIdAndDelete(botId);
 
-    // if (!deletedBot) {
-    //   return res.status(404).json({ msg: "Bot not found" });
-    // }
+    const bot = await Bot.findById(botId);
+    if (!bot) return res.status(404).json({ msg: "Bot not found" });
 
-    res.json({ msg: "Implement Mee /deletePost" });
+    if (bot.creator.toString() !== userId && userRole !== "admin") {
+      return res.status(403).json({ msg: "Not authorized to delete this bot" });
+    }
+
+    await Bot.findByIdAndDelete(botId);
+    res.json({ msg: "Bot deleted successfully" });
   } catch (error) {
     console.error("Error deleting bot:", error.message);
     res.status(500).json({ msg: "Server error deleting bot" });

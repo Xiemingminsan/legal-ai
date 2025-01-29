@@ -5,9 +5,9 @@ import { computed } from 'vue'
 export const useAuthStore = defineStore('auth', () => {
   // State
   const token = ref(localStorage.getItem('token') || null)
-  const username = ref('')
-  const role = ref('')
-  const proAccount = ref(false)
+  const username = ref(localStorage.getItem('username') || '')
+  const role = ref(localStorage.getItem('role') || '')
+  const proAccount = ref(localStorage.getItem('proAccount') === 'true')
 
   // Getters
   const isAuthenticated = computed(() => !!token.value)
@@ -18,15 +18,25 @@ export const useAuthStore = defineStore('auth', () => {
     username.value = response.username
     role.value = response.role
     proAccount.value = response.proAccount || false
+
+    // Save to localStorage
     localStorage.setItem('token', response.token)
+    localStorage.setItem('username', response.username)
+    localStorage.setItem('role', response.role)
+    localStorage.setItem('proAccount', response.proAccount.toString()) // Store boolean as string
   }
 
   function clearUser() {
     token.value = null
-    username.value = null
-    role.value = null
+    username.value = ''
+    role.value = ''
     proAccount.value = false
+
+    // Remove from localStorage
     localStorage.removeItem('token')
+    localStorage.removeItem('username')
+    localStorage.removeItem('role')
+    localStorage.removeItem('proAccount')
   }
 
   async function login(credentials) {
@@ -126,6 +136,8 @@ export const useAuthStore = defineStore('auth', () => {
     token,
     isAuthenticated,
     proAccount,
+    role,
+    username,
     setUser,
     clearUser,
     login,

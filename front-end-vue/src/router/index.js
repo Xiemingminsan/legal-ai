@@ -84,12 +84,12 @@ const router = createRouter({
 //     return '/SignIn'
 //   }
 
-//   // // Restrict admin routes to admins only
-//   // if (adminRoutes.some((route) => to.path.startsWith(route))) {
-//   //   if (authStore.role !== 'admin') {
-//   //     return '/home' // Redirect non-admin users to the home page
-//   //   }
-//   // }
+//   // Restrict admin routes to admins only
+//   if (adminRoutes.some((route) => to.path.startsWith(route))) {
+//     if (authStore.role !== 'admin') {
+//       return '/home' // Redirect non-admin users to the home page
+//     }
+//   }
 
 //   return true
 // })

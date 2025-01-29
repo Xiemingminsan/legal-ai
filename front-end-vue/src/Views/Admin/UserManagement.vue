@@ -29,8 +29,8 @@
     </div>
 
     <!-- Loading state -->
-    <div v-if="isLoading" class="flex justify-center items-center">
-      <div class="animate-spin border-t-2 border-blue-600 border-solid rounded-full w-8 h-8"></div>
+    <div v-if="isLoading" class="flex justify-center items-center h-[400px]">
+      <LoadingSpinner />
     </div>
 
     <!-- Error state -->
@@ -100,6 +100,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useAdminStore } from '@/stores/adminStore';
 import { MyToast } from '@/utils/toast';
 import ErrorRetryComp from '@/components/Basics/ErrorRetryComp.vue';
+import LoadingSpinner from '@/components/Basics/LoadingSpinner.vue';
 
 const adminStore = useAdminStore();
 
@@ -187,6 +188,8 @@ const suspendUser = async (userId) => {
     MyToast.error(response.error); // Optionally show a toast message
     return;
   }
+
+  users.value = users.value.filter(user => user._id !== userId);
   MyToast.success(response.msg);
 };
 

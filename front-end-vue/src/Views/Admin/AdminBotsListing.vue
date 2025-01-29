@@ -1,12 +1,12 @@
 <template>
 
   <!-- Loading state -->
-  <div v-if="isLoading" class="flex justify-center items-center">
-    <div class="animate-spin border-t-2 border-blue-600 border-solid rounded-full w-8 h-8"></div>
+  <div v-if="isLoading" class="flex justify-center items-center mt-48">
+    <LoadingSpinner />
   </div>
 
   <!-- Error state -->
-  <ErrorRetryComp v-else-if="error" :errorMessage="error" :onRetry="getServerHealth" />
+  <ErrorRetryComp v-else-if="error" :errorMessage="error" :onRetry="getAllBots" />
   <!-- if Page Loadded -->
   <div v-else class="space-y-8">
     <!-- Primary Bots Section -->
@@ -51,6 +51,7 @@ import { useAdminStore } from '@/stores/adminStore';
 import { MyToast } from '@/utils/toast';
 import AdminBotListingCard from '@/components/Admin/AdminBotListingCard.vue';
 import ErrorRetryComp from '@/components/Basics/ErrorRetryComp.vue';
+import LoadingSpinner from '@/components/Basics/LoadingSpinner.vue';
 
 
 const adminStore = useAdminStore();

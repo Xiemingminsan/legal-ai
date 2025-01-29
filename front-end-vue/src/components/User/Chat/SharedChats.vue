@@ -20,6 +20,7 @@ const messagesContainer = ref(null); // Reference for scrolling
 const sharedConversationId = ref(null);
 import { useRoute } from 'vue-router';
 import { setNavBarShowState } from '@/utils/Utils';
+import LoadingSpinner from '@/components/Basics/LoadingSpinner.vue';
 
 const route = useRoute();
 
@@ -91,7 +92,7 @@ onUnmounted(() => {
     <div class="flex-grow overflow-y-scroll  scrollable-div" ref="messagesContainer">
       <!-- Loading state -->
       <div v-if="isLoading" class="flex justify-center items-center mt-32">
-        <div class="animate-spin border-t-2 border-blue-600 border-solid rounded-full w-8 h-8"></div>
+        <LoadingSpinner />
       </div>
 
       <!-- Error state -->

@@ -8,9 +8,9 @@
       <div class="animate-spin border-t-2 border-blue-600 border-solid rounded-full w-8 h-8"></div>
     </div>
 
-    <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-8">Create New Bot</h1>
+    <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-8 ml-3">Create New Bot</h1>
 
-    <form @submit.prevent="createBot" class="space-y-8">
+    <form @submit.prevent="createBot" class="space-y-8 p-2">
       <!-- Bot Details Section -->
       <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
         <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Bot Details</h2>
@@ -215,7 +215,7 @@
 
       <!-- Loading state -->
       <div v-if="isLoading" class="flex justify-center items-center">
-        <div class="animate-spin border-t-2 border-blue-600 border-solid rounded-full w-8 h-8"></div>
+        <LoadingSpinner />
       </div>
 
       <!-- Error state -->
@@ -286,6 +286,7 @@
       </div>
     </form>
   </div>
+  <div class="min-h-[80px]  lg:hidden"></div>
 </template>
 
 <script setup>
@@ -296,6 +297,7 @@ import { useUserStore } from '@/stores/userStore';
 import { MyToast } from '@/utils/toast';
 import ErrorRetryComp from '@/components/Basics/ErrorRetryComp.vue';
 import MyHttpService from '@/stores/MyHttpService';
+import LoadingSpinner from '@/components/Basics/LoadingSpinner.vue';
 
 const adminStore = useAdminStore();
 const userStore = useUserStore();
