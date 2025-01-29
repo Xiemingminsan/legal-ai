@@ -25,7 +25,7 @@ export default class MyHttpService {
   static async request(
     method,
     endpoint,
-    { query = {}, body = null, useJWT = false, delay = 0 } = {},
+    { query = {}, body = null, useJWT = false, delay = 500 } = {},
   ) {
     // Delay the request if specified
     await this.delay(delay)
@@ -87,22 +87,22 @@ export default class MyHttpService {
   }
 
   // Convenience method for GET requests
-  static get(endpoint, { query = {}, useJWT = false, delay = 0 } = {}) {
+  static get(endpoint, { query = {}, useJWT = false, delay } = {}) {
     return this.request('GET', endpoint, { query, useJWT, delay })
   }
 
   // Convenience method for POST requests
-  static post(endpoint, { body = {}, query = {}, useJWT = false, delay = 0 } = {}) {
+  static post(endpoint, { body = {}, query = {}, useJWT = false, delay } = {}) {
     return this.request('POST', endpoint, { body, query, useJWT, delay })
   }
 
   // Convenience method for PUT requests
-  static patch(endpoint, { body = {}, useJWT = false, delay = 0 } = {}) {
+  static patch(endpoint, { body = {}, useJWT = false, delay } = {}) {
     return this.request('PATCH', endpoint, { body, useJWT, delay })
   }
 
   // Convenience method for DELETE requests
-  static delete(endpoint, { useJWT = false, delay = 0 } = {}) {
+  static delete(endpoint, { useJWT = false, delay } = {}) {
     return this.request('DELETE', endpoint, { useJWT, delay })
   }
 }

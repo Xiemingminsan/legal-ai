@@ -29,7 +29,7 @@
     </div>
 
     <!-- Loading state -->
-    <div v-if="isLoading" class="flex justify-center items-center">
+    <div v-if="isLoading" class="flex justify-center items-center h-[400px]">
       <LoadingSpinner />
     </div>
 
