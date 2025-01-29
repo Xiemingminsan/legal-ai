@@ -38,9 +38,8 @@
 
 <script setup>
 import MyHttpService from '@/stores/MyHttpService';
-import { ref } from 'vue';
 
-const props = defineProps({
+ defineProps({
   documents: {
     type: Array,
     required: true,

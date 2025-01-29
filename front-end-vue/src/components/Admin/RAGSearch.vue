@@ -83,7 +83,7 @@ const props = defineProps({
   }
 });
 
-const performSearch2 = async () => {
+const performSearch = async () => {
 
   try {
     const response = await fetch(`${MyHttpService.PYTHON_MICRO_SERVICE_API_URL}/search`, {
@@ -107,8 +107,8 @@ const performSearch2 = async () => {
     console.error('Error:', error);
   }
 }
-
-const performSearch = () => {
+//@todo remove not used anymore
+const performSearch2 = () => {
   searchResults.value = [
     {
       doc_id: "a1b2c3d4e5",

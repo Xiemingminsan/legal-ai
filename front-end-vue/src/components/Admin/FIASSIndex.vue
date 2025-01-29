@@ -15,7 +15,7 @@ import MyHttpService from '@/stores/MyHttpService';
 import { MyToast } from '@/utils/toast';
 import { onMounted, ref } from 'vue';
 
-
+const fiassItems = ref([]);
 
 const getFiassItems = async () => {
 
