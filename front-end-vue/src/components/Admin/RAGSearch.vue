@@ -82,31 +82,37 @@ const props = defineProps({
     required: true
   }
 });
-
 const performSearch = async () => {
-
   try {
+    const formData = new URLSearchParams();
+    formData.append("query", searchQuery.value);
+    formData.append("top_k", topK.value);
+    formData.append("language", language.value);
+    formData.append("bot_id", props.botId);
+
     const response = await fetch(`${MyHttpService.PYTHON_MICRO_SERVICE_API_URL}/search`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',  // Correct content type
       },
-      body: JSON.stringify({
-        query: searchQuery.value,
-        top_k: topK.value,
-        language: language.value,
-        botId: props.botId
-      })
+      body: formData.toString() // Converts URLSearchParams to proper form-encoded string
     });
+
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
     const data = await response.json();
-    searchResults.value = data.results;
-    console.log(data.result);
+
+    searchResults.value = data.results || []; // Ensure results is always an array
   } catch (error) {
     MyToast.error('An error occurred while searching for similar documents.');
     searchResults.value = [];
     console.error('Error:', error);
   }
-}
+};
+
 //@todo remove not used anymore
 const performSearch2 = () => {
   searchResults.value = [
