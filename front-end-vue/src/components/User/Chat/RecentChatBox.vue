@@ -62,7 +62,8 @@ defineProps({
   },
 });
 
-const emit = defineEmits(['selectChat']);
+const emit = defineEmits(['selectChat', 'deleteChat']);
+
 
 const handleSelectChat = (chat) => {
   emit('selectChat', chat);
@@ -90,6 +91,12 @@ const handleShareChat = async (chat) => {
     MyToast.error("Failed to copy link to clipboard.");
   }
 };
+
+
+const handleDeleteChat = async (chat) => {
+  emit('deleteChat', chat);
+};
+
 
 
 </script>

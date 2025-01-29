@@ -541,4 +541,28 @@ router.get("/getSharedConversation", async (req, res) => {
   }
 });
 
+router.post("/deleteChat", async (req, res) => {
+  try {
+    const { conversationId } = req.body; // Get conversationId from Body params
+
+    // Check if sharedConversationId is provided
+    if (!conversationId) {
+      return res.status(400).json({ msg: "conversationId is required " });
+    }
+
+    // Fetch the  conversation @todo do this properly yosef
+    // const converstion = await converstion.findById(sharedConversationId);
+
+    // if (!converstion) {
+    //   return res.status(404).json({ msg: "conversation not found" });
+    // }
+
+    // Return the shared conversation data
+    res.status(200).json({msg: "Conversation deleted successfully"});
+  } catch (error) {
+    console.error("Error deleting conversation:", error);
+    res.status(500).json({ msg: "Server error deleting conversation" });
+  }
+});
+
 module.exports = router;

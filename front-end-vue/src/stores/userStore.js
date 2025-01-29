@@ -128,6 +128,27 @@ export const useUserStore = defineStore('userStore', () => {
     }
   }
 
+
+  async function deleteChat(conversationId) {
+    try {
+      const response = await MyHttpService.post(`/chat/deleteChat`, {
+        useJWT: true,
+        body: { conversationId: conversationId },
+      })
+      console.log(response)
+      // If response contains error, return that immediately
+      if (response.error) {
+        return { error: response.error || 'Unable To Delete Chat' }
+      }
+
+      return response
+    } catch (err) {
+      console.error(err) // Log the error in the console
+
+      return { error: 'Internal Error' }
+    }
+  }
+
   async function shareChat(conversationId) {
     try {
       const response = await MyHttpService.post(`/chat/shareChat`, {

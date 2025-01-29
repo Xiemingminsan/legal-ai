@@ -79,6 +79,24 @@ const onSelectChat = (chat) => {
   selectedChat.value = chat;
 };
 
+
+const onDeleteChat = async (chat) => {
+  console.log(chat);
+  const response = await userStore.deleteChat(chat._id);
+  console.log(response);
+  if (response.error) {
+    MyToast.error(response.error); // Optionally show a toast message
+    return;
+  }
+  recentChats.value = recentChats.value.filter(c => c._id !== chat._id);
+  if(selectedChat.value?._id === chat._id) {
+    selectedChat.value = null;
+  }
+
+  MyToast.success("Chat deleted successfully");
+};
+
+
 const onBack = () => {
   selectedChat.value = null;
 };
@@ -103,7 +121,7 @@ const onBack = () => {
       </div>
 
 
-      <RecentChatBox v-else :chats="recentChats" @selectChat="onSelectChat" />
+      <RecentChatBox v-else :chats="recentChats" @selectChat="onSelectChat" @deleteChat="onDeleteChat" />
     </div>
     <div :class="[
       isMobileView && !selectedChat ? 'hidden' : 'w-full md:w-2/3 lg:w-3/4',
