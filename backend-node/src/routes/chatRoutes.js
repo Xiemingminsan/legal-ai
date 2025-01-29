@@ -112,6 +112,7 @@ router.post("/ask-ai", authMiddleware, upload.single("file"), async (req, res) =
       file: fileData
     });
 
+
     // Build context with file content
     const context = [
       conversation.summary,
@@ -179,10 +180,10 @@ router.post("/ask-ai", authMiddleware, upload.single("file"), async (req, res) =
     });
 
   } catch (error) {
-    console.error("Error in /ask-ai:", error);
+    console.error("Error in /ask-ai:", error.message);
     return res.status(500).json({
       msg: "Server error in AI communication",
-      error: error.message
+      error: error
     });
   }
 });

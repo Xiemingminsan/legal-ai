@@ -207,6 +207,7 @@ router.post("/deleteAccount", authMiddleware, async (req, res) => {
   try {
     const userId = req.user.userId;
 
+    console.log("Deleting account of user:", userId);
     // Find the user in the database
     const user = await User.findById(userId);
     if (!user) {
@@ -215,6 +216,8 @@ router.post("/deleteAccount", authMiddleware, async (req, res) => {
 
     // Delete the user
     await User.findByIdAndDelete(userId);
+
+    console.log("Account Deleted successfully");
 
     res.json({ msg: "Account Deleted successfully" });
   } catch (err) {
@@ -236,24 +239,5 @@ router.delete("/deleteAllUsers", authMiddleware, async (req, res) => {
   }
 });
 
-router.delete("/deleteUser/:id", authMiddleware, async (req, res) => {
-  try {
-    const userId = req.params.id;
-
-    // Find the user in the database
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ msg: "User not found" });
-    }
-
-    // Delete the user
-    await User.findByIdAndDelete(userId);
-
-    res.json({ msg: "User deleted successfully" });
-  } catch (err) {
-    console.error("Error during deletion of user:", err);
-    res.status(500).json({ msg: "Server error" });
-  }
-});
 
 module.exports = router;

@@ -4,45 +4,52 @@
       Chats
     </h2>
     <ul>
-      <li v-for="chat in chats" :key="chat._id"
-        class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors duration-150 group"
-        @click="handleSelectChat(chat)">
-        <div class="flex items-center p-4">
-          <!-- Bot Icon -->
-          <img :src="chat.bot?.icon ? chat.bot.icon : '/bot.png'" alt="bot icon" class="w-12 h-12 rounded-full mr-4" />
+      <div v-if="chats.length === 0" class="p-4 text-center text-gray-500 dark:text-gray-400 mt-20">
+        No chats available.
+      </div>
+      <div v-else>
+        <li v-for="chat in chats" :key="chat._id"
+          class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors duration-150 group"
+          @click="handleSelectChat(chat)">
+          <div class="flex items-center p-4">
+            <!-- Bot Icon -->
+            <img :src="chat.bot?.icon ? chat.bot.icon : '/bot.png'" alt="bot icon"
+              class="w-12 h-12 rounded-full mr-4" />
 
-          <!-- Chat Details -->
-          <div class="flex-1 min-w-0">
-            <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200">
-              {{ chat.bot?.name }}
-            </h3>
-            <p class="text-sm text-gray-600 dark:text-gray-400 truncate">
-              {{ chat.lastTextSentByUser }}
-            </p>
-          </div>
-          <div class="flex flex-col items-end p-2">
-            <!-- Timestamp -->
-            <span class="text-xs  text-gray-500 dark:text-gray-400">
-              {{ MyUtils.dateFormatter(chat.timeStamp) }}
-            </span>
-            <!-- Share and Delete Icons -->
-            <div class="flex  space-x-2 opacity-60 group-hover:opacity-100 transition-opacity duration-150">
-              <!-- Share Icon -->
-              <button @click.stop="handleShareChat(chat)"
-                class="p-1 text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                <i class="ri-share-line text-lg"></i>
-              </button>
-
-              <!-- Delete Icon -->
-              <button @click.stop="handleDeleteChat(chat)"
-                class="p-1 text-gray-500 hover:text-red-600 dark:hover:text-red-400 transition-colors">
-                <i class="ri-delete-bin-line text-lg"></i>
-              </button>
+            <!-- Chat Details -->
+            <div class="flex-1 min-w-0">
+              <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200">
+                {{ chat.bot?.name }}
+              </h3>
+              <p class="text-sm text-gray-600 dark:text-gray-400 truncate">
+                {{ chat.lastTextSentByUser }}
+              </p>
             </div>
-          </div>
+            <div class="flex flex-col items-end p-2">
+              <!-- Timestamp -->
+              <span class="text-xs  text-gray-500 dark:text-gray-400">
+                {{ MyUtils.dateFormatter(chat.timeStamp) }}
+              </span>
+              <!-- Share and Delete Icons -->
+              <div class="flex  space-x-2 opacity-60 group-hover:opacity-100 transition-opacity duration-150">
+                <!-- Share Icon -->
+                <button @click.stop="handleShareChat(chat)"
+                  class="p-1 text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                  <i class="ri-share-line text-lg"></i>
+                </button>
 
-        </div>
-      </li>
+                <!-- Delete Icon -->
+                <button @click.stop="handleDeleteChat(chat)"
+                  class="p-1 text-gray-500 hover:text-red-600 dark:hover:text-red-400 transition-colors">
+                  <i class="ri-delete-bin-line text-lg"></i>
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </li>
+      </div>
+
     </ul>
   </div>
 </template>

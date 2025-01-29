@@ -9,9 +9,8 @@ export default class MyHttpService {
 
   static API_BASE_URL = 'http://localhost:5000/api' // Replace with your backend URL
 
-  static loadImage(imageUrl) {
-    return `http://localhost:5000/Uploads/${imageUrl}`
-  }
+  static PYTHON_MICRO_SERVICE_API_URL = 'http://localhost:8000' // Replace with your backend URL
+
 
   static delay(ms = 0) {
     return new Promise((resolve) => setTimeout(resolve, ms))
