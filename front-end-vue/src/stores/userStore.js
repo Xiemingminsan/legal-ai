@@ -128,7 +128,6 @@ export const useUserStore = defineStore('userStore', () => {
     }
   }
 
-
   async function deleteChat(conversationId) {
     try {
       const response = await MyHttpService.post(`/chat/deleteChat`, {
@@ -194,6 +193,7 @@ export const useUserStore = defineStore('userStore', () => {
     getExploreBots,
     getConversation,
     createNewChat,
+    deleteChat,
     askAi,
     createBot,
     shareChat,

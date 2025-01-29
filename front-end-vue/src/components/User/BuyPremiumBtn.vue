@@ -91,7 +91,7 @@ onMounted(async () => {
 
 
   if (txRefToVerify) {
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 2000));
 
     // Remove the query parameter from the URL
     const { href, origin, pathname } = window.location;
