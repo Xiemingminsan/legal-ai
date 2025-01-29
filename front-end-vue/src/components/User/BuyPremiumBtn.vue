@@ -82,7 +82,7 @@ import { MyToast } from "@/utils/toast";
 const route = useRoute();
 
 onMounted(async () => {
-  txRef.value = `TX-${uuidv4()}`; // Generates a unique transaction reference
+  txRef.value = `TX-LegalBot-ET-${uuidv4()}`; // Generates a unique transaction reference
 
   console.log(txRef.value);
 
