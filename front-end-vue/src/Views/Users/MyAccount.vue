@@ -1,7 +1,7 @@
 <template>
   <div class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
     <div class="container mx-auto px-4 py-8 flex flex-col justify-center items-center">
-      <h1 class="text-3xl font-bold mb-8 hidden md:block">My Account</h1>
+      <h1 class="text-3xl font-bold mb-8 hidden md:block text-left ">My Account</h1>
 
 
       <!-- Loading state -->
@@ -13,12 +13,12 @@
       <ErrorRetryComp v-else-if="error" :errorMessage="error" :onRetry="getMyAccount" />
 
       <!-- User Profile Section -->
-      <div v-else class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-8 lg:max-w-[60%]">
-        <div class="flex flex-row items-center justify-between mb-6">
+      <div v-else class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-8 w-full lg:w-[60%]">
+        <div class="flex flex-row items-center justify-between mb-6 ">
           <div class="flex flex-row">
             <img src="https://ui-avatars.com/api/?name=Abel+Derbe&background=random" alt="Profile Avatar"
               class="w-24 h-24 rounded-full mb-4 sm:mb-0 sm:mr-6" />
-            <div class="text-center sm:text-left ml-2">
+            <div class="text-center sm:text-left ml-2 ">
               <h2 class="text-2xl font-semibold">{{ userModel?.fullname }}.</h2>
               <p class="text-gray-600 dark:text-gray-400">{{ userModel.username }}</p>
               <p class="text-sm hidden sm:block text-gray-500 dark:text-gray-500">
@@ -26,10 +26,9 @@
               </p>
             </div>
           </div>
-          <div class="md:hidden flex flex-col gap-3">
-            <LanguageSelector />
-            <DarkModeToggle />
-          </div>
+          <button @click="logout" class="lg:hidden flex items-center text-red-500 hover:text-red-700">
+            <i class="ri-logout-box-line text-xl"></i>
+          </button>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div class="hidden md:block">
@@ -37,7 +36,7 @@
             <p>{{ userModel.email }}</p>
           </div>
           <div class="p-2">
-            <h3 class="text-lg font-semibold mb-2">Account Type</h3>
+            <h3 class="text-lg font-semibold mb-2 ">Account Type</h3>
             <p class="capitalize">{{ userModel?.proAccount ? "Premium" : "Free" }}</p>
             <!-- Premium Upgrade Available -->
             <div v-if="userModel?.proAccount == false" class="p-2 bg-white dark:bg-gray-800 mt-2 rounded-lg shadow-md">
@@ -47,7 +46,7 @@
               <p class="mt-2 text-gray-600 dark:text-gray-300">
                 Unlock advanced features and improve your experience.
               </p>
-              <BuyPremiumBtn  />
+              <BuyPremiumBtn />
             </div>
           </div>
         </div>
@@ -128,20 +127,49 @@
           <!-- Payment History Section -->
           <h3 class="text-xl font-semibold mb-4">Payment History</h3>
           <ul class="space-y-4">
-            <li v-for="payment in paymentHistory" :key="payment.id" class="flex justify-between items-center">
-              <span>{{ payment.date }}</span>
-              <span class="font-semibold">{{ payment.amount }} USD</span>
-              <span :class="payment.status === 'Success' ? 'text-green-500' : 'text-red-500'">
-                {{ payment.status }}
-              </span>
-            </li>
+            <ul class="space-y-2">
+              <div class="overflow-y-auto max-h-44">
+
+                <li v-for="payment in userModel.paymentHistory" :key="payment._id"
+                  class="bg-white dark:bg-gray-800 rounded-lg shadow p-3 flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-2 sm:space-y-0">
+                  <div class="flex items-center space-x-3">
+                    <span class="text-lg font-semibold text-green-600 dark:text-green-400">
+                      ${{ payment.amount.toFixed(2) }}
+                    </span>
+                    <span class="text-sm text-gray-500 dark:text-gray-400">
+                      {{ MyUtils.formatTimestamp(payment.start_date) }}
+                      <b>(1 Month)</b>
+                    </span>
+                  </div>
+                  <span class="text-xs text-gray-400 dark:text-gray-500 truncate  flex items-center space-x-2">
+
+
+                    <a :href="`https://chapa.co/payment/${payment.tx_ref}`" target="_blank"
+                      class="text-blue-500 hover:text-blue-700">
+                      <i class="ri-check-line text-green-500 text-xl rounded-full bg-gray-100 font-bold mr-2"></i>
+                      <!-- Transaction Reference (tx_ref) -->
+                      <span>{{ payment.tx_ref }}</span>
+                    </a>
+
+                  </span>
+                </li>
+              </div>
+
+            </ul>
           </ul>
         </div>
 
         <div v-else-if="activeTab === 'settings'">
           <!-- Settings Section -->
           <h3 class="text-xl font-semibold mb-4">Settings</h3>
-          <p class="text-gray-600 dark:text-gray-300">Update your account preferences here.</p>
+          <div class=" flex flex-col gap-3">
+            <span class="flex gap-5 justify-between w-[220px]">Change Language
+              <LanguageSelector />
+            </span>
+            <span class="flex gap-5 justify-between w-[220px]">Change Theme
+              <DarkModeToggle />
+            </span>
+          </div>
           <!-- Add settings fields or options here -->
         </div>
       </div>
@@ -201,7 +229,11 @@ onMounted(() => {
   getMyAccount();
 });
 
-
+// Logout function
+const logout = () => {
+  authStore.logout();
+  router.push("/signin");
+};
 
 // Handle password change
 const handlePasswordChange = async () => {

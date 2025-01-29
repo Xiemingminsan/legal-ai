@@ -17,6 +17,9 @@ const PaymentHistorySchema = new mongoose.Schema(
         return new Date(this.start_date.getTime() + 30*24*60*60*1000); // End date is 30 days from start date
       },
     },
+    tx_ref: {
+      type: String,
+    },
   },
 );
 

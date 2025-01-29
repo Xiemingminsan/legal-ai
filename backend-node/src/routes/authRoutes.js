@@ -104,7 +104,12 @@ router.post("/login", async (req, res) => {
       { expiresIn: "1d" }
     );
 
-    res.json({ token, username: user.username, role: user.role });
+    res.json({
+      token,
+      username: user.username,
+      role: user.role,
+      proAccount: user.proAccount,
+    });
   } catch (err) {
     console.error("Error during login:", err);
     res.status(500).json({ msg: "Server error" });
@@ -164,6 +169,36 @@ router.post("/changePassword", authMiddleware, async (req, res) => {
     res.json({ msg: "Password changed successfully" });
   } catch (err) {
     console.error("Error during password change:", err);
+    res.status(500).json({ msg: "Server error" });
+  }
+});
+
+router.post("/buyProSubscription", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    console.log(req.body);
+    const { tx_ref, amount } = req.body;
+
+    console.log(tx_ref);
+
+    // Find the user in the database
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
+
+    // Add new payment entry
+    user.paymentHistory.push({ amount, tx_ref });
+
+    // Activate Pro Account
+    user.proAccount = true;
+
+    // Save changes
+    await user.save();
+
+    res.json({ msg: "Pro subscription purchased successfully", user });
+  } catch (err) {
+    console.error("Error during Pro Account Purchase:", err);
     res.status(500).json({ msg: "Server error" });
   }
 });

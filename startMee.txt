@@ -8,5 +8,4 @@ npm run dev
 cd 'c:\Users\User\Desktop\legal-ai\ai-microservice-python'
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
 venv\Scripts\activate
-
 python -m uvicorn main:app --reload --port 8000
