@@ -93,3 +93,16 @@ class PDFExtractor:
                 errors.append(error_msg)
 
         raise HTTPException(status_code=400, detail=f"Failed to extract text after {extractor.max_retries} attempts: {', '.join(errors)}")
+
+if __name__ == "__main__":
+    import sys
+    if len(sys.argv) != 2:
+        print("Usage: python pdfextractor.py <pdf_path>")
+        sys.exit(1)
+
+    try:
+        text = PDFExtractor.extract_content(sys.argv[1])
+        print(text)
+    except HTTPException as e:
+        sys.stderr.write(f"ERROR: {e.detail}")
+        sys.exit(1)
