@@ -85,7 +85,7 @@
         </button>
       </nav>
       <div class="p-6">
-        <RAGSearch v-if="currentTab === 'rag'" />
+        <RAGSearch v-if="currentTab === 'rag'" :botId="bot._id" />
         <FIASSIndex v-else-if="currentTab === 'fiass'" />
         <AdminUploadedDocuments v-else-if="currentTab === 'documents'" />
       </div>
@@ -94,7 +94,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import RAGSearch from '@/components/Admin/RAGSearch.vue';
 import FIASSIndex from '@/components/Admin/FIASSIndex.vue';
