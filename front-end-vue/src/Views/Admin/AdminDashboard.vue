@@ -30,7 +30,7 @@
           <option value="60">Last 60 Days</option>
         </select>
       </div>
-      <canvas ref="fileUploadChart"></canvas>
+      <canvas ref="fileUploadChart" style="height: 200px; width: 200px;"></canvas>
     </div>
 
     <!-- User Activity and Recent Sign-ups -->
@@ -161,7 +161,17 @@ watch(chartPeriod, () => {
 });
 
 const createChart = () => {
+
+  if (chart) {
+    chart.destroy();
+  }
   const ctx = fileUploadChart.value.getContext('2d');
+
+  // Manually setting size to prevent Chart.js from overriding it
+  fileUploadChart.value.style.width = "700px";
+  fileUploadChart.value.style.height = "200px";
+  fileUploadChart.value.width = 700; // Internal resolution size
+  fileUploadChart.value.height = 200;
 
   // Filter data based on the selected period
   const filteredData = getFilteredData(chartPeriod.value);

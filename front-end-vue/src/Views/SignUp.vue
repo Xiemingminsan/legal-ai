@@ -210,6 +210,7 @@ const handleSignUp = async () => {
     ethiopianLawKnowledge: lawFamiliarity.value,
     legalProcessUnderstanding: legalProcessUnderstanding.value,
     legalTerminologyComfort: legalTerminologyComfort.value,
+    fullname: name.value,
   };
 
   const response = await authStore.signUp(signupPayload);

@@ -68,10 +68,12 @@ router.post("/ask-ai", authMiddleware, upload.single("file"), async (req, res) =
 
     let fileData = null;
     let processedFile = null;
+    let counter = false;
 
     // Process uploaded file
     if (req.file) {
       try {
+        counter=true;
         processedFile = await processUploadedFile(req.file);
         
         fileData = {
@@ -79,7 +81,7 @@ router.post("/ask-ai", authMiddleware, upload.single("file"), async (req, res) =
           filetype: req.file.mimetype,
           fileSize: (req.file.size / 1048576).toFixed(2),
           filedownloadUrl: `uploads/userChatUpload/${req.file.filename}`,
-          processedContent: processedFile
+          processedContent: processedFile.content
         };
 
         console.log("File processed successfully:", processedFile);
@@ -87,6 +89,8 @@ router.post("/ask-ai", authMiddleware, upload.single("file"), async (req, res) =
         console.error("File processing error:", error);
         return res.status(400).json({ msg: "Error processing uploaded file" });
       }
+    } else {
+      counter=false
     }
 
     // Initialize or find conversation
@@ -118,8 +122,9 @@ router.post("/ask-ai", authMiddleware, upload.single("file"), async (req, res) =
       conversation.summary,
       ...(conversation.conversation?.slice(-20) || []).map(msg => {
         let msgText = `${msg.role}: ${msg.text}`;
-        if (msg.fileTextContent) {
-          msgText += `\nFile content: ${msg.fileTextContent}`;
+        if (msg.file && counter == true) {
+          console.log("File content found in context:", msg.file);
+          msgText += `\n This is the File or Image content the user sent inline from the chat and is additonal context, If found no answer from the normal context, refer to this and check as well: ${msg.file}`;
         }
         return msgText;
       }),
