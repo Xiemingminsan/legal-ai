@@ -388,6 +388,7 @@ const createBot = async () => {
   formData.append('name', botName.value);
   formData.append('description', botDesc.value);
   formData.append('visibility', isPublic.value ? 'public' : 'private');
+  formData.append('categories', category.value);
   if (botImage.value) {
     formData.append('icon', botImage.value);
   }

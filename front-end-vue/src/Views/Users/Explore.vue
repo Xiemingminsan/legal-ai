@@ -32,7 +32,7 @@
       </div>
       <div class="mb-4"></div>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 ">
-        <ExploreBotCard v-for="bot in myBots" :key="bot._id" :bot="bot" :is-premium="true" />
+        <ExploreBotCard v-for="bot in myBots" :key="bot._id" :bot="bot" />
       </div>
     </section>
   </div>

@@ -29,7 +29,12 @@
     <div class="p-4">
       <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">{{ bot.name }}</h3>
       <p class="text-sm text-gray-600 dark:text-gray-400">{{ bot.description }}</p>
-      <p class="text-sm text-gray-600 dark:text-gray-400">{{ bot }}</p>
+      <div class="flex-shrink-0">
+        <span v-for="category in bot.categories" :key="category"
+          class="bg-green-100 text-green-800 px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
+          {{ category }}
+        </span>
+      </div>
 
     </div>
   </div>
