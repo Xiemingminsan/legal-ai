@@ -47,7 +47,7 @@
               <p class="mt-2 text-gray-600 dark:text-gray-300">
                 Unlock advanced features and improve your experience.
               </p>
-              <BuyPremiumBtn />
+              <BuyPremiumBtn  />
             </div>
           </div>
         </div>

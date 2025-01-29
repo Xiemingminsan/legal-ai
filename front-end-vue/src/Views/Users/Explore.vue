@@ -26,9 +26,9 @@
     </section>
     <section>
       <br><br>
-      <h2 class="inline text-2xl font-semibold text-gray-800 dark:text-gray-200">Private Bots</h2>
-      <div class="inline-block ml-2 w-min bg-yellow-400 text-gray-900 text-xs font-bold px-2 py-1 rounded-full">
-        Premium
+      <div class="flex gap-3">
+        <h2 class="inline text-2xl font-semibold text-gray-800 dark:text-gray-200 mt-4">Private Bots</h2>
+        <BuyPremiumBtn />
       </div>
       <div class="mb-4"></div>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 ">
@@ -41,11 +41,15 @@
 import ExploreBotCard from '@/components/User/ExploreBotCard.vue';
 import { ref, onMounted, computed } from 'vue';
 import { useUserStore } from '@/stores/userStore';
+import { useAuthStore } from '@/stores/authStore';
 import { MyToast } from '@/utils/toast';
 import ErrorRetryComp from '@/components/Basics/ErrorRetryComp.vue';
+import BuyPremiumBtn from '@/components/User/BuyPremiumBtn.vue';
 
 
 const userStore = useUserStore();
+const authStore = useAuthStore();
+
 
 const isLoading = ref(false);
 const error = ref(null);

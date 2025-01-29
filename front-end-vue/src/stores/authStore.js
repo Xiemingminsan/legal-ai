@@ -7,6 +7,7 @@ export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('token') || null)
   const username = ref('')
   const role = ref('')
+  const proAccount = ref(false)
 
   // Getters
   const isAuthenticated = computed(() => !!token.value)
@@ -16,6 +17,7 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = response.token
     username.value = response.username
     role.value = response.role
+    proAccount.value = response.proAccount || false
     localStorage.setItem('token', response.token)
   }
 
@@ -23,6 +25,7 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = null
     username.value = null
     role.value = null
+    proAccount.value = false
     localStorage.removeItem('token')
   }
 
@@ -36,7 +39,6 @@ export const useAuthStore = defineStore('auth', () => {
       }
 
       setUser(response)
-
 
       return response
     } catch (err) {
@@ -68,7 +70,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function getMyAccount() {
     try {
-      console.log(token.value);
+      console.log(token.value)
       const response = await MyHttpService.get('/auth/getMyAccount', { useJWT: true })
       // If response contains error, return that immediately
       if (response.error) {
@@ -104,6 +106,7 @@ export const useAuthStore = defineStore('auth', () => {
   return {
     token,
     isAuthenticated,
+    proAccount,
     setUser,
     clearUser,
     login,

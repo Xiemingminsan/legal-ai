@@ -1,13 +1,15 @@
 <template>
   <div class="relative mt-4">
     <!-- Upgrade Button -->
-    <button
+    <button v-if="authStore.proAccount == false"
       class="flex items-center bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-500 hover:to-yellow-700 text-white font-bold py-2 px-6 rounded-full shadow-md transition duration-300 ease-in-out"
       @click="showModal = true">
       <i class="ri-flashlight-line mr-2 animate-pulse"></i>
       Upgrade to Premium
     </button>
-
+    <div v-else class="inline-block ml-2 w-min bg-yellow-400 text-gray-900 text-xs font-bold px-2 py-1 rounded-full">
+      Premium
+    </div>
     <!-- Centered Modal -->
     <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-96 p-6">
@@ -42,8 +44,7 @@
         </button>
 
         <!-- Close Button -->
-        <button
-          class="mt-4 w-full text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100"
+        <button class="mt-4 w-full text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100"
           @click="showModal = false">
           Close
         </button>
@@ -53,10 +54,26 @@
 </template>
 
 <script setup>
+
 import { ref } from "vue";
+import { useAuthStore } from '@/stores/authStore';
+
+const authStore = useAuthStore();
+
+const props = defineProps({
+  showButtonOrLabel: {
+    type: Boolean,
+    default: true
+  },
+  showModal: {
+    type: Boolean,
+    default: false
+  }
+});
 
 // State
-const showModal = ref(false);
+const showModal = ref(props.showModal);
+
 
 // Premium Features List
 const premiumFeatures = [
@@ -74,7 +91,3 @@ const proceedToPayment = () => {
   showModal.value = false; // Close the modal after proceeding
 };
 </script>
-
-<style scoped>
-/* Add FontAwesome or other icon library setup here */
-</style>
