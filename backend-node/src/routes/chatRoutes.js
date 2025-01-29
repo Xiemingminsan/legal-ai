@@ -8,45 +8,8 @@ const SharedConversation = require("../models/SharedConversation");
 const mongoose = require("mongoose");
 const multer = require("multer");
 const path = require("path");
+const { processUploadedFile } = require("../helpers/extractor");
 const { Types, Schema } = mongoose;
-
-// Pdf parser
-const pdf = require("pdf-parse");
-
-const parsePDF = async (filePath) => {
-  try {
-    const dataBuffer = fs.readFileSync(filePath);
-    const data = await pdf(dataBuffer);
-    return data.text; // Extracted text from PDF
-  } catch (error) {
-    console.error("Error parsing PDF:", error);
-    return null;
-  }
-};
-// TXT Parser
-const fs = require("fs");
-
-const parseTXT = (filePath) => {
-  try {
-    const text = fs.readFileSync(filePath, "utf8");
-    return text; // Extracted text from TXT
-  } catch (error) {
-    console.error("Error parsing TXT:", error);
-    return null;
-  }
-};
-// Word Parser
-const mammoth = require("mammoth");
-
-const parseWord = async (filePath) => {
-  try {
-    const result = await mammoth.extractRawText({ path: filePath });
-    return result.value; // Extracted text from Word
-  } catch (error) {
-    console.error("Error parsing Word file:", error);
-    return null;
-  }
-};
 
 // Configure multer storage
 const storage = multer.diskStorage({
@@ -72,7 +35,7 @@ const fileFilter = (req, file, cb) => {
 // Initialize multer
 const upload = multer({ storage, fileFilter });
 
-//@todo error txt file error catching can't read
+
 router.use((err, req, res, next) => {
   if (err instanceof multer.MulterError) {
     // Handle multer errors (e.g., file size limits)
@@ -95,180 +58,121 @@ router.post("/ask-ai", authMiddleware, upload.single("file"), async (req, res) =
       return res.status(400).json({ msg: "Query cannot be empty" });
     }
 
-    // Initialize fileMetadata as null
-    let fileMetadata = null;
-    let fileTextContent = null;
+    let fileData = null;
+    let processedFile = null;
 
-    // Check if a file was uploaded
+    // Process uploaded file
     if (req.file) {
-      const { filename, mimetype, size, path: filePath } = req.file;
-
-      // Convert file size from bytes to MB
-      const fileSizeInMB = (size / 1048576).toFixed(2); // Convert to MB and round to 2 decimal places
-
-      // Extract file metadata
-      fileMetadata = {
-        filename: filename, // Name of the file
-        filetype: mimetype, // MIME type of the file
-        fileSize: fileSizeInMB, // Size of the file in bytes
-        filedownloadUrl: `uploads/userChatUpload/${filename}`, // URL to access the file
-      };
-
-      console.log("File uploaded:", fileMetadata);
-
-      // Extract text content based on file type
-      if (mimetype === "application/pdf") {
-        fileTextContent = await parsePDF(filePath);
-      } else if (mimetype === "text/plain") {
-        fileTextContent = parseTXT(filePath);
-      } else if (
-        mimetype ===
-          "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
-        mimetype === "application/msword"
-      ) {
-        fileTextContent = await parseWord(filePath);
-      } else if (mimetype.startsWith("image/")) {
-        fileTextContent = "Image file Fix meee"; //@todo
-        console.log("Image file detected. Skipping text extraction for now. @todo");
-      } else {
-        return res.status(400).json({
-          msg: "Unsupported file type" + mimetype,
-        });
-      }
-
-      if (fileTextContent) {
-        console.log("Extracted text content:", fileTextContent);
-      }
-
-      // Check if fileTextContent exceeds 500 characters
-      if (fileTextContent && fileTextContent.length > 500) {
-        console.log("File text content exceeds the limit of 500 characters.");
-        return res.status(400).json({
-          msg: "File text content exceeds the limit of 500 characters.",
-        });
+      try {
+        processedFile = await processUploadedFile(req.file);
+        
+        fileData = {
+          filename: req.file.filename,
+          filetype: req.file.mimetype,
+          fileSize: (req.file.size / 1048576).toFixed(2),
+          filedownloadUrl: `uploads/userChatUpload/${req.file.filename}`,
+          processedContent: processedFile
+        };
+      } catch (error) {
+        console.error("File processing error:", error);
+        return res.status(400).json({ msg: "Error processing uploaded file" });
       }
     }
 
-    // Initialize conversation
-    let conversation;
+    // Initialize or find conversation
+    let conversation = conversationId 
+      ? await ChatHistory.findOne({ _id: conversationId, userId })
+      : new ChatHistory({ userId, conversation: [], chunksUsed: [], summary: "" });
 
-    if (conversationId) {
-      conversation = await ChatHistory.findOne({ _id: conversationId, userId });
-      if (!conversation) {
-        return res.status(404).json({ msg: "Conversation not found" });
-      }
-    } else {
-      // Create new conversation if no conversationId provided
-      conversation = new ChatHistory({
-        userId,
-        conversation: [],
-        chunksUsed: [],
-        summary: "",
-      });
+    if (conversationId && !conversation) {
+      return res.status(404).json({ msg: "Conversation not found" });
     }
 
-    // Find bot and verify it exists
+    // Find bot
     const bot = await Bot.findById(conversation.botId).populate("documents");
     if (!bot) {
       return res.status(404).json({ msg: "Bot not found" });
     }
 
-    const botContext = bot.systemPrompt ? bot.systemPrompt + "\n\n" : "";
-
-    // Add user query to the conversation
+    // Add message to conversation
     conversation.conversation.push({
       role: "user",
       text: query,
-      fileTextContent: fileTextContent,
-      file: fileMetadata,
+      fileTextContent: processedFile?.type === 'pdf' ? processedFile.content : null,
+      file: fileData
     });
 
-    // Update summary if needed
-    if (conversation.conversation.length % 10 === 0) {
-      try {
-        const aiServiceUrl = process.env.AI_SERVICE_URL || "http://localhost:8000";
-        const summaryResponse = await axios.post(
-          `${aiServiceUrl}/summarize`,
-          new URLSearchParams({
-            conversationText: conversation.conversation
-              .map((msg) => `${msg.role}: ${msg.text}`)
-              .join("\n"),
-          }),
-          { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
-        );
-
-        if (summaryResponse.data && summaryResponse.data.summary) {
-          conversation.summary = summaryResponse.data.summary;
-        }
-      } catch (error) {
-        console.error("Error summarizing conversation:", error.message);
-        // Continue execution even if summary fails
-      }
-    }
-
-    // Build context: summary + last messages + recent chunks
-    console.log("okay")
+    // Build context with file content
     const context = [
       conversation.summary,
-      ...(conversation.conversation?.slice(-20) || []).map((msg) => `${msg.role}: ${msg.text}`),
-      ...(conversation.chunksUsed?.slice(-5) || []).map((chunk) => `Chunk from doc ${chunk.doc_id}:\n${chunk.text}`),
-    ]
-      .filter(Boolean)
-      .join("\n")
-      
-      console.log("not okay")
+      ...(conversation.conversation?.slice(-20) || []).map(msg => {
+        let msgText = `${msg.role}: ${msg.text}`;
+        if (msg.fileTextContent) {
+          msgText += `\nFile content: ${msg.fileTextContent}`;
+        }
+        return msgText;
+      }),
+      ...(conversation.chunksUsed?.slice(-5) || []).map(chunk => 
+        `Chunk from doc ${chunk.doc_id}:\n${chunk.text}`
+      )
+    ].filter(Boolean).join("\n");
 
-    // Call AI service
-    try {
-      const aiServiceUrl = process.env.AI_SERVICE_URL || "http://localhost:8000";
-      const aiResponse = await axios.post(
-        `${aiServiceUrl}/qa`,
-        new URLSearchParams({
-          language: language || "en",
-          query,
-          context,
-          bot_id: bot._id.toString(),
-          top_k: "10",
-        }),
-        { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
-      );
+    // Call AI service with enhanced payload
+    const aiServiceUrl = process.env.AI_SERVICE_URL || "http://localhost:8000";
+    const payload = new URLSearchParams({
+      language: language || "en",
+      query,
+      context,
+      bot_id: bot._id.toString(),
+      top_k: "10"
+    });
 
-      if (!aiResponse.data || !aiResponse.data.answer) {
-        throw new Error("Invalid response from AI service");
-      }
-
-      const aiAnswer = aiResponse.data.answer;
-      const usedChunks = aiResponse.data.chunksUsed || [];
-
-      conversation.conversation.push({
-        role: "bot",
-        text: aiAnswer,
-      });
-
-      // Update chunks used
-      if (usedChunks.length > 0) {
-        conversation.chunksUsed = [...conversation.chunksUsed, ...usedChunks].slice(-50); // Keep only last 50 chunks
-      }
-
-      // Save the conversation
-      await conversation.save();
-
-      return res.json({
-        conversationId: conversation._id,
-        conversation: conversation.conversation,
-      });
-    } catch (error) {
-      console.error("Error calling AI service:", error.message);
-      return res.status(500).json({
-        msg: "Failed to communicate with AI service.",
-        error: error.message,
-      });
+    // Add image data if present
+    if (processedFile?.type === 'image') {
+      payload.append('image_data', processedFile.content);
+      payload.append('image_type', processedFile.mimeType);
     }
+
+    const aiResponse = await axios.post(
+      `${aiServiceUrl}/qa`,
+      payload,
+      { 
+        headers: { 
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Max-Content-Length": "50mb"
+        } 
+      }
+    );
+
+    if (!aiResponse.data || !aiResponse.data.answer) {
+      throw new Error("Invalid response from AI service");
+    }
+
+    // Update conversation with AI response
+    conversation.conversation.push({
+      role: "bot",
+      text: aiResponse.data.answer
+    });
+
+    if (aiResponse.data.chunksUsed?.length > 0) {
+      conversation.chunksUsed = [
+        ...conversation.chunksUsed, 
+        ...aiResponse.data.chunksUsed
+      ].slice(-50);
+    }
+
+    await conversation.save();
+
+    return res.json({
+      conversationId: conversation._id,
+      conversation: conversation.conversation
+    });
+
   } catch (error) {
-    console.error("Error in /ask-ai:", error.message);
+    console.error("Error in /ask-ai:", error);
     return res.status(500).json({
       msg: "Server error in AI communication",
-      error: error.message,
+      error: error.message
     });
   }
 });
