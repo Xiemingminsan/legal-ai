@@ -19,12 +19,9 @@
     </section>
     <section>
       <h2 class="inline text-2xl font-semibold text-gray-800 dark:text-gray-200">Public Bots</h2>
-      <div class="inline-block ml-2 w-min bg-yellow-400 text-gray-900 text-xs font-bold px-2 py-1 rounded-full">
-        Premium
-      </div>
       <div class="mb-4"></div>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 ">
-        <ExploreBotCard v-for="bot in userBots" :key="bot._id" :bot="bot" :is-premium="true" />
+        <ExploreBotCard v-for="bot in userBots" :key="bot._id" :bot="bot" :showWarningLabel="true" />
       </div>
     </section>
     <section>
