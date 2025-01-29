@@ -60,38 +60,38 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach((to, from) => {
-  const authStore = useAuthStore()
-  const publicPaths = ['/land', '/SignUp', '/SignIn']
-  const adminRoutes = [
-    '/admin',
-    '/admin/dashboard',
-    '/admin/users',
-    '/admin/bots',
-    '/admin/bot/:id',
-    '/admin/createBot',
-    '/admin/settings',
-  ]
+// router.beforeEach((to, from) => {
+//   const authStore = useAuthStore()
+//   const publicPaths = ['/land', '/SignUp', '/SignIn']
+//   const adminRoutes = [
+//     '/admin',
+//     '/admin/dashboard',
+//     '/admin/users',
+//     '/admin/bots',
+//     '/admin/bot/:id',
+//     '/admin/createBot',
+//     '/admin/settings',
+//   ]
 
-  // Handle public routes
-  if (publicPaths.includes(to.path)) {
-    // Redirect authenticated users away from public routes
-    return authStore.token ? '/home' : true
-  }
+//   // Handle public routes
+//   if (publicPaths.includes(to.path)) {
+//     // Redirect authenticated users away from public routes
+//     return authStore.token ? '/home' : true
+//   }
 
-  // Check authentication for non-public routes
-  if (!authStore.token) {
-    return '/SignIn'
-  }
+//   // Check authentication for non-public routes
+//   if (!authStore.token) {
+//     return '/SignIn'
+//   }
 
-  // // Restrict admin routes to admins only
-  // if (adminRoutes.some((route) => to.path.startsWith(route))) {
-  //   if (authStore.role !== 'admin') {
-  //     return '/home' // Redirect non-admin users to the home page
-  //   }
-  // }
+//   // // Restrict admin routes to admins only
+//   // if (adminRoutes.some((route) => to.path.startsWith(route))) {
+//   //   if (authStore.role !== 'admin') {
+//   //     return '/home' // Redirect non-admin users to the home page
+//   //   }
+//   // }
 
-  return true
-})
+//   return true
+// })
 
 export default router

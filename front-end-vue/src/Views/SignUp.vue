@@ -2,7 +2,7 @@
   <div
     class="h-[100vh] flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-400 dark:from-gray-900 dark:to-gray-700">
     <div class="absolute top-0 w-full">
-      <NavBarLandingPage />
+      <NavBarLandingPage :hideNavLinks="true" />
     </div>
     <div class="bg-white dark:bg-gray-800 shadow-xl rounded-lg p-8 max-w-md w-full">
       <div class="flex justify-center mb-8">
