@@ -24,8 +24,7 @@ const getFiassItems = async () => {
       method: 'GET',
     });
     const data = await response.json();
-    fiassItems.value = data.results;
-    console.log(data.result);
+    fiassItems.value = data.documents;
   } catch (error) {
     MyToast.error('An error occurred while Getting FIASS documents.');
     console.error('Error:', error);

@@ -260,7 +260,7 @@ router.get("/getBot", async (req, res) => {
 
     console.log(bot)
     // Return the bot along with populated documents and creator
-    res.json(bot);
+g    res.json(bot);
   } catch (error) {
     console.error("Error fetching bot:", error.message);
     res.status(500).json({ msg: "Server error fetching bot" });
