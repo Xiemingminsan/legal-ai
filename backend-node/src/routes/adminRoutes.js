@@ -258,6 +258,7 @@ router.get("/getBot", async (req, res) => {
       return res.status(404).json({ msg: "Bot not found" });
     }
 
+    console.log(bot)
     // Return the bot along with populated documents and creator
     res.json(bot);
   } catch (error) {

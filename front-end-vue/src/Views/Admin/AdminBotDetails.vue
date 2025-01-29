@@ -87,7 +87,7 @@
       <div class="p-6">
         <RAGSearch v-if="currentTab === 'rag'" :botId="bot._id" />
         <FIASSIndex v-else-if="currentTab === 'fiass'" />
-        <AdminUploadedDocuments v-else-if="currentTab === 'documents'" />
+        <AdminUploadedDocuments v-else-if="currentTab === 'documents'" :documents="bot.documents" />
       </div>
     </div>
   </div>

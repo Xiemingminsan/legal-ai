@@ -32,12 +32,35 @@
 
     </form>
     <div v-if="searchResults.length > 0" class="space-y-4">
-      <div v-for="result in searchResults" :key="result.id" class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{ result.title }}</h3>
-        <p class="text-sm text-gray-600 dark:text-gray-300">Document ID: {{ result.id }}</p>
-        <p class="mt-2 text-gray-700 dark:text-gray-200">{{ result.chunkText }}</p>
-        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Similarity Score: {{ result.similarityScore.toFixed(4)
-          }}</p>
+      <div class="space-y-4">
+        <div v-for="result in searchResults" :key="result.doc_id"
+          class="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden">
+          <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+            <div class="flex items-start justify-between">
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{ result.title }}</h3>
+              <span
+                class="px-2 py-1 text-xs font-medium bg-sky-100 text-sky-800 rounded-full dark:bg-sky-900 dark:text-sky-200">
+                {{ result.category }}
+              </span>
+            </div>
+            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Document ID: {{ result.doc_id }}</p>
+          </div>
+
+          <div class="p-4">
+
+            <div class="mt-4 flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400">
+              <div class="flex items-center">
+                <i class="ri-calendar-line mr-2 text-gray-400 dark:text-gray-500"></i>
+                <span>Uploaded: {{ new Date(result.uploadDate).toLocaleDateString() }}</span>
+              </div>
+              <div class="flex items-center">
+                <i class="ri-bar-chart-box-line mr-2 text-gray-400 dark:text-gray-500"></i>
+                <span>Similarity: <strong>{{ result.similarity.toFixed(4) }}</strong></span>
+              </div>
+            </div>
+            <p class="text-gray-700 dark:text-gray-200">{{ result.text }}</p>
+          </div>
+        </div>
       </div>
     </div>
     <p v-else class="text-gray-600 dark:text-gray-400">No search results to display.</p>
@@ -46,6 +69,7 @@
 
 <script setup>
 import MyHttpService from '@/stores/MyHttpService';
+import { MyToast } from '@/utils/toast';
 import { ref } from 'vue';
 
 const searchQuery = ref('');
@@ -59,7 +83,7 @@ const props = defineProps({
   }
 });
 
-const searchSimilariDocs = async () => {
+const performSearch2 = async () => {
 
   try {
     const response = await fetch(`${MyHttpService.PYTHON_MICRO_SERVICE_API_URL}/search`, {
@@ -75,35 +99,63 @@ const searchSimilariDocs = async () => {
       })
     });
     const data = await response.json();
-    console.log(data);
-    // searchResults.value = data.results;
+    searchResults.value = data.results;
+    console.log(data.result);
   } catch (error) {
+    MyToast.error('An error occurred while searching for similar documents.');
+    searchResults.value = [];
     console.error('Error:', error);
   }
 }
 
 const performSearch = () => {
-  searchSimilariDocs();
-  // Mock search results (replace with actual API call)
   searchResults.value = [
     {
-      id: 'doc1',
-      title: 'Legal Contract Template',
-      chunkText: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam euismod, nisi vel consectetur interdum, nisl nunc egestas nunc, vitae tincidunt nisl nunc euismod nunc.',
-      similarityScore: 0.8765,
+      doc_id: "a1b2c3d4e5",
+      title: "Ethiopian Civil Code - Property Law",
+      text: "Ownership rights shall not be transferred without a legally binding contract.",
+      similarity: 0.8921,
+      docScope: "public",
+      category: "Property Law",
+      uploadDate: "2025-01-28T10:15:30.000Z",
     },
     {
-      id: 'doc2',
-      title: 'Case Law Summary',
-      chunkText: 'Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.',
-      similarityScore: 0.7654,
+      doc_id: "f6g7h8i9j0",
+      title: "Criminal Offenses and Penalties",
+      text: "Any individual found guilty of theft shall be subject to a minimum sentence of two years.",
+      similarity: 0.8123,
+      docScope: "public",
+      category: "Criminal Law",
+      uploadDate: "2025-01-27T08:45:20.000Z",
     },
     {
-      id: 'doc3',
-      title: 'Legal Procedures Guide',
-      chunkText: 'Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident.',
-      similarityScore: 0.6543,
+      doc_id: "k1l2m3n4o5",
+      title: "Business Contracts Act 2024",
+      text: "All business agreements must be signed by both parties and notarized to be legally enforceable.",
+      similarity: 0.7932,
+      docScope: "private",
+      category: "Contract Law",
+      uploadDate: "2025-01-26T15:30:10.000Z",
+    },
+    {
+      doc_id: "p6q7r8s9t0",
+      title: "Employment Rights - Workplace Safety",
+      text: "Employers are required to ensure a safe working environment, adhering to federal labor laws.",
+      similarity: 0.7689,
+      docScope: "public",
+      category: "Labor Law",
+      uploadDate: "2025-01-25T12:05:50.000Z",
+    },
+    {
+      doc_id: "u1v2w3x4y5",
+      title: "Family Law - Child Custody Guidelines",
+      text: "In custody cases, the best interest of the child shall be the primary consideration.",
+      similarity: 0.7425,
+      docScope: "restricted",
+      category: "Family Law",
+      uploadDate: "2025-01-24T09:20:40.000Z",
     },
   ];
+
 };
 </script>

@@ -91,7 +91,6 @@ export const useAdminStore = defineStore('adminStore', () => {
     } catch (err) {
       console.error(err) // Log the error in the console
 
-      //@todo update that user account status or remove from table
       return { error: 'Internal Error' }
     }
   }
@@ -132,7 +131,6 @@ export const useAdminStore = defineStore('adminStore', () => {
     } catch (err) {
       console.error(err) // Log the error in the console
 
-      //@todo update that user account status or remove from table
       return { error: 'Internal Error' }
     }
   }
@@ -152,7 +150,6 @@ export const useAdminStore = defineStore('adminStore', () => {
     } catch (err) {
       console.error(err) // Log the error in the console
 
-      //@todo update that user account status or remove from table
       return { error: 'Internal Error' }
     }
   }
