@@ -67,6 +67,9 @@ export const navBarState = reactive({
   showNavbar: true, // default value for the flag
 });
 
+export const CHAPPA_API_KEY="CHAPUBK_TEST-TgUGy5LdJeVoNldKSxqqsjpRcXsB8RD8"
+export const PAYMENT_AMOUNT="199.99"
+
 // Method to update the flag value
 export const setNavBarShowState = (value) => {
   navBarState.showNavbar = value;

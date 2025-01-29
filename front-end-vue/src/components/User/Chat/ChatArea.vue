@@ -5,8 +5,8 @@ import { MyToast } from '@/utils/toast';
 import ErrorRetryComp from '@/components/Basics/ErrorRetryComp.vue';
 import MessageBubble from '@/components/User/Chat/MessageBubble.vue';
 import { setNavBarShowState } from '@/utils/Utils';
-
-
+import { useAuthStore } from '@/stores/authStore';
+const authStore = useAuthStore();
 const props = defineProps({
   chat: {
     type: Object,
@@ -27,7 +27,6 @@ const conversation = ref([]);
 const messageToSend = ref('');
 const selectedLanguage = ref('en');
 const messagesContainer = ref(null); // Reference for scrolling
-const isPremiumUser = ref(true);
 const isLoadingNewMessage = ref(false);
 const errorGettingLastChat = ref(null);
 const selectedFile = ref(null);
@@ -267,27 +266,21 @@ const askAi = async () => {
           class="flex-1 rounded-lg border-t border-b border-r border-gray-300 dark:border-gray-600 py-2 px-4 focus:outline-none focus:ring-1 focus:ring-gray-500 dark:bg-gray-700 dark:text-gray-200" />
 
         <!-- File Upload Button with Pro Label -->
-        <div class="relative">
-          <div>
-            <!-- File Input Label -->
-            <label for="file-upload"
-              class="cursor-pointer bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg p-2 hover:bg-gray-400 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-              :class="{
-                'bg-green-500 dark:bg-green-600': fileUploaded,
-                'opacity-50 cursor-not-allowed': !isPremiumUser,
-              }">
-              <i class="ri-upload-cloud-2-line h-5 w-5"></i>
-            </label>
-
-            <!-- Hidden File Input -->
-            <input id="file-upload" type="file" class="hidden" :disabled="!isPremiumUser"
-              accept=".txt,.doc,.docx,.pdf,image/*" @change="onFileChange" />
-          </div>
-          <!-- Pro Label -->
-          <div v-if="!isPremiumUser"
-            class="absolute bottom-3 right-5 transform translate-y-1/2 translate-x-1/2 bg-sky-500 text-white text-[10px] font-semibold px-2 py-1 rounded-full">
-            Pro
-          </div>
+        <div class="relative inline-block">
+          <label for="file-upload"
+            class="cursor-pointer block p-2 rounded-md transition-colors duration-200 text-center" :class="[
+              authStore.proAccount
+                ? 'bg-sky-500 hover:bg-sky-600 text-white'
+                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+            ]">
+            <i :class="[fileUploaded ? 'ri-check-line' : 'ri-upload-cloud-2-line', 'text-lg']"></i>
+          </label>
+          <input id="file-upload" type="file" class="hidden" :disabled="!authStore.proAccount"
+            accept=".txt,.doc,.docx,.pdf,image/*" @change="onFileChange" />
+          <span v-if="!authStore.proAccount"
+            class="absolute -top-2 -right-2 bg-yellow-500 text-xs text-white font-bold px-1 rounded-full">
+            PRO
+          </span>
         </div>
 
         <!-- Send Button -->

@@ -103,6 +103,25 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function buyProSubscription(tx_ref, amount) {
+    try {
+      const response = await MyHttpService.post('/auth/buyProSubscription', {
+        useJWT: true,
+        body: { tx_ref, amount },
+      })
+      // If response contains error, return that immediately
+      if (response.error) {
+        return { error: response.error || 'Unable To Buy Pro Subscription' }
+      }
+
+      return response
+    } catch (err) {
+      console.error(err) // Log the error in the console
+
+      return { error: 'Internal Error Buying Pro Subscription' }
+    }
+  }
+
   return {
     token,
     isAuthenticated,
@@ -114,5 +133,6 @@ export const useAuthStore = defineStore('auth', () => {
     logout,
     getMyAccount,
     changePassword,
+    buyProSubscription,
   }
 })

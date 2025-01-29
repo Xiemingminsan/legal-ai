@@ -37,16 +37,25 @@
         </ul>
 
 
-        <div id="chapa-inline-form"></div>
-
-
-        <!-- Proceed Button -->
-        <button
-          class="w-full bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-500 hover:to-yellow-700 text-white font-bold py-2 px-6 rounded-full shadow-md transition duration-300 ease-in-out"
-          @click="proceedToPayment">
-          Proceed
-        </button>
-
+        <form method="POST" action="https://api.chapa.co/v1/hosted/pay">
+          <input type="hidden" name="public_key" v-model="CHAPPA_API_KEY" />
+          <input type="hidden" name="amount" v-model="PAYMENT_AMOUNT" />
+          <input type="hidden" name="currency" value="ETB" />
+          <input type="hidden" name="tx_ref" :value="txRef" />
+          <input type="hidden" name="first_name" value="Israel" />
+          <input type="hidden" name="last_name" value="Goytom" />
+          <input type="hidden" name="title" value="Let us do this" />
+          <input type="hidden" name="description" value="Paying with Confidence with cha" />
+          <input type="hidden" name="logo" value="/logo.png" />
+          <input type="hidden" name="return_url" :value="MyHttpService.FRONT_END_URL + 'myaccount?txRef=' + txRef" />
+          <input type="hidden" name="meta[title]" value="test" />
+          <!-- Proceed Button -->
+          <button
+            class="w-full bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-500 hover:to-yellow-700 text-white font-bold py-2 px-6 rounded-full shadow-md transition duration-300 ease-in-out"
+            type="submit">
+            Proceed
+          </button>
+        </form>
         <!-- Close Button -->
         <button class="mt-4 w-full text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100"
           @click="showModal = false">
@@ -59,33 +68,49 @@
 
 <script setup>
 
-import { ref } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useAuthStore } from '@/stores/authStore';
-// import ChapaCheckout from '@/stores/chappa';
-
-// const chapa = new ChapaCheckout({
-//   publicKey: 'CHAPUBK_TEST-TgUGy5LdJeVoNldKSxqqsjpRcXsB8RD8',
-//   amount: '100',
-//   currency: 'ETB',
-//   availablePaymentMethods: ['telebirr', 'cbebirr', 'ebirr', 'mpesa', 'chapa'],
-//   customizations: {
-//     buttonText: 'Pay Now',
-//     styles: `
-//             .chapa-pay-button {
-//                 background-color: #4CAF50;
-//                 color: white;
-//             }
-//         `
-//   },
-//   callbackUrl: 'https://yourdomain.com/callback',
-//   returnUrl: 'https://yourdomain.com/success',
-// });
-
-// chapa.initialize('chapa-inline-form');
-
-
-
+import { PAYMENT_AMOUNT, CHAPPA_API_KEY } from '@/utils/Utils';
+import MyHttpService from "@/stores/MyHttpService";
 const authStore = useAuthStore();
+import { v4 as uuidv4 } from "uuid";
+const txRef = ref("");
+import { useRoute } from 'vue-router';
+import { MyToast } from "@/utils/toast";
+
+
+const route = useRoute();
+
+onMounted(async () => {
+  txRef.value = `TX-LegalBot-ET-${uuidv4()}`; // Generates a unique transaction reference
+
+  console.log(txRef.value);
+
+  // Check if the URL contains a query parameter for verifying payment
+  const txRefToVerify = route.query.txRef;
+
+
+  if (txRefToVerify) {
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Remove the query parameter from the URL
+    const { href, origin, pathname } = window.location;
+    const newUrl = `${origin}${pathname}`;
+    window.history.replaceState({}, document.title, newUrl);
+
+
+    const response = await authStore.buyProSubscription(txRefToVerify, PAYMENT_AMOUNT);
+
+    if (response.error) {
+      MyToast.error(response.error);
+      return;
+    }
+    authStore.proAccount = true;
+    //update authStore is account Pro here;
+    MyToast.success("Pro Account Bought Successfully");
+  }
+});
+
 
 const props = defineProps({
   showButtonOrLabel: {
@@ -102,6 +127,7 @@ const props = defineProps({
 const showModal = ref(props.showModal);
 
 
+
 // Premium Features List
 const premiumFeatures = [
   "Unlimited legal document generation",
@@ -111,10 +137,5 @@ const premiumFeatures = [
   "Customizable legal document storage",
 ];
 
-// Proceed to Payment Function
-const proceedToPayment = () => {
-  // Add your payment processing logic here
-  alert("Redirecting to payment gateway...");
-  showModal.value = false; // Close the modal after proceeding
-};
+
 </script>
