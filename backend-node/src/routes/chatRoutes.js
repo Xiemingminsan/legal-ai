@@ -446,27 +446,50 @@ router.get("/getSharedConversation", async (req, res) => {
   }
 });
 
-router.post("/deleteChat", async (req, res) => {
-  try {
-    const { conversationId } = req.body; // Get conversationId from Body params
+// Add this to your existing router file
 
-    // Check if sharedConversationId is provided
+router.post("/deleteChat", authMiddleware, async (req, res) => {
+  try {
+    const { conversationId } = req.body;
+    const userId = req.user.userId;
+
+    // Validate conversation ID
     if (!conversationId) {
-      return res.status(400).json({ msg: "conversationId is required " });
+      return res.status(400).json({ msg: "Conversation ID is required" });
     }
 
-    // Fetch the  conversation @todo do this properly yosef
-    // const converstion = await converstion.findById(sharedConversationId);
+    // Find the conversation and ensure it belongs to the user
+    const conversation = await ChatHistory.findOne({
+      _id: conversationId,
+      userId: userId
+    });
 
-    // if (!converstion) {
-    //   return res.status(404).json({ msg: "conversation not found" });
-    // }
+    if (!conversation) {
+      return res.status(404).json({ msg: "Conversation not found" });
+    }
 
-    // Return the shared conversation data
-    res.status(200).json({msg: "Conversation deleted successfully"});
+    // Check if conversation is empty (no messages)
+    if (!conversation.conversation || conversation.conversation.length === 0) {
+      // Delete the conversation
+      await ChatHistory.findByIdAndDelete(conversationId);
+      return res.status(200).json({ 
+        msg: "Empty conversation deleted successfully",
+        deleted: true
+      });
+    }
+
+    // If conversation has messages, return appropriate response
+    return res.status(400).json({ 
+      msg: "Conversation contains messages and cannot be deleted",
+      deleted: false
+    });
+
   } catch (error) {
     console.error("Error deleting conversation:", error);
-    res.status(500).json({ msg: "Server error deleting conversation" });
+    return res.status(500).json({ 
+      msg: "Server error deleting conversation",
+      error: error.message 
+    });
   }
 });
 
