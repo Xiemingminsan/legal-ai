@@ -14,6 +14,12 @@ const ChatMessageSchema = new mongoose.Schema({
   }
 });
 
+  const ChunkSchema = new mongoose.Schema({
+    doc_id: { type: String, required: true },
+    text: { type: String, required: true },
+    timestamp: { type: Date, default: Date.now },
+  });
+
 
 const ChatHistorySchema = new mongoose.Schema({
   userId: {
@@ -25,6 +31,8 @@ const ChatHistorySchema = new mongoose.Schema({
     ref: "Bot",
   },
   conversation: [ChatMessageSchema], // array of messages
+  summary: { type: String, default: "" }, // add summary field
+  chunksUsed: [ChunkSchema], // add chunksUsed field],
   createdAt: {
     type: Date,
     default: Date.now,
