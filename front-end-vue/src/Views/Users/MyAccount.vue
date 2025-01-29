@@ -313,9 +313,9 @@ const deleteFunction = () => {
     return;
   }
 
-  MyToast.success("Account Deleted");
-  authStore.logout();
-  router.push('/signin');
+  MyToast.success("Account Deletedd");
+  // authStore.logout();
+  // router.push('/signin');
 
 };
 
