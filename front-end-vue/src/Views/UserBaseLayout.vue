@@ -1,8 +1,8 @@
 <template>
   <div class="flex">
     <UserNavBar /> <!-- Include NavBar  -->
-    <main class="flex-1 overflow-hidden lg:ml-64 min-h-screen bg-gradient-to-br from-[#ffffff] to-[#f3eeee] dark:from-gray-800 dark:to-gray-900">
-      <router-view></router-view> 
+    <main class="flex-1 overflow-hidden lg:ml-64 min-h-screen bg-gradient-to-br from-[#ffffff] to-[#f3eeee] dark:from-gray-900 dark:to-gray-900">
+      <router-view></router-view>
     </main>
   </div>
 </template>

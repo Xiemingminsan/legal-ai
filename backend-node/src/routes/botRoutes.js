@@ -29,104 +29,104 @@ const upload = multer({
   },
 });
 
-  router.post("/add", authMiddleware, upload.array("files"), async (req, res) => {
-    try {
-      const {
-        name,
-        description,
-        icon,
-        visibility,
-        systemPrompt,
-        documentIds,
-        categories,
-      } = req.body;
-      const metadata = JSON.parse(req.body.metadata || "[]");
+router.post("/add", authMiddleware, upload.array("files"), async (req, res) => {
+  try {
+    console.log("req.body", req.body);
+    const { name, description, icon, visibility, systemPrompt, documentIds, categories } =
+      req.body;
+    const metadata = JSON.parse(req.body.metadata || "[]");
 
-      if (!name || !description || !req.files?.length) {
-        return res.status(400).json({ msg: "Missing required fields" });
-      }
-      let type;
-
-      if (visibility === "private") {
-        type = "private";
-      } else if (visibility === "public" && req.user.role === "admin") {
-        type = "primary";
-      } else {
-        type = "public";
-      }
-
-      // Create bot
-      const bot = new Bot({
-        name,
-        description,
-        icon,
-        visibility,
-        systemPrompt,
-        type,
-        creator: req.user.userId,
-        categories,
-      });
-
-      await bot.save();
-      console.log("Bot created:", bot);
-
-      // Process each file
-      const results = [];
-      const errors = [];
-
-      for (let i = 0; i < req.files.length; i++) {
-        try {
-          const file = req.files[i];
-          const fileMetadata = metadata[i];
-
-          const result = await uploadDocument(
-            file,
-            {
-              bot_id: bot._id,
-              title: fileMetadata.title,
-              category: fileMetadata.category,
-              docScope: fileMetadata.docScope,
-              language: fileMetadata.language,
-            },
-            req.user.userId
-          );
-
-          bot.documents.push(result.docId);
-          results.push(result);
-        } catch (error) {
-          console.log(error.message + "  Helpp");
-          errors.push({
-            file: req.files[i].originalname,
-            error: error.message,
-          });
-        }
-      }
-
-      // Parse and add documentIds if provided
-      if (documentIds) {
-        try {
-          const parsedDocumentIds = JSON.parse(documentIds);
-          if (Array.isArray(parsedDocumentIds)) {
-            bot.documents.push(...parsedDocumentIds);
-          } else {
-            return res.status(400).json({ msg: "Invalid format for documentIds" });
-          }
-        } catch (error) {
-          return res.status(400).json({ msg: "Error parsing documentIds" });
-        }
-      }
-      await bot.save();
-
-      res.status(201).json({
-        bot,
-        results,
-        errors: errors.length ? errors : undefined,
-      });
-    } catch (error) {
-      console.error("Error creating bot:", error);
-      res.status(500).json({ msg: "Server error" });
+    if (!name || !description || !req.files?.length) {
+      return res.status(400).json({ msg: "Missing required fields" });
     }
-  });
+    let type;
+
+    if (visibility === "private") {
+      type = "private";
+    } else if (visibility === "public" && req.user.role === "admin") {
+      type = "primary";
+    } else {
+      type = "public";
+    }
+
+    // Create bot
+    const bot = new Bot({
+      name,
+      description,
+      icon,
+      visibility,
+      systemPrompt,
+      type,
+      creator: req.user.userId,
+      categories,
+    });
+
+    await bot.save();
+    console.log("Bot created:", bot);
+
+    // Process each file
+    const results = [];
+    const errors = [];
+
+    for (let i = 0; i < req.files.length; i++) {
+      try {
+        const file = req.files[i];
+        const fileMetadata = metadata[i];
+        console.log("Docccc ", i, metadata[i]);
+
+        const result = await uploadDocument(
+          file,
+          {
+            bot_id: bot._id,
+            title: fileMetadata.title,
+            category: fileMetadata.category,
+            docScope: fileMetadata.docScope,
+            language: fileMetadata.language,
+          },
+          req.user.userId
+        );
+
+        bot.documents.push(result.docId);
+        results.push(result);
+      } catch (error) {
+        if (error instanceof AggregateError) {
+          console.log("AggregateError:", error.message);
+          error.errors.forEach((e, index) => console.log(`Error ${index + 1}:`, e.message));
+        } else {
+          console.error(error);
+        }
+        errors.push({
+          file: req.files[i].originalname,
+          error: error.message,
+        });
+      }
+    }
+
+    // Parse and add documentIds if provided
+    if (documentIds) {
+      try {
+        const parsedDocumentIds = JSON.parse(documentIds);
+        if (Array.isArray(parsedDocumentIds)) {
+          bot.documents.push(...parsedDocumentIds);
+        } else {
+          return res.status(400).json({ msg: "Invalid format for documentIds" });
+        }
+      } catch (error) {
+        return res.status(400).json({ msg: "Error parsing documentIds" });
+      }
+    }
+    await bot.save();
+
+    res.status(201).json({
+      bot,
+      results,
+      errors: errors.length ? errors : undefined,
+    });
+  } catch (error) {
+    console.error("Error creating bot:", error);
+    res.status(500).json({ msg: "Server error" });
+  }
+});
 
 //Get Bots
 router.get("/", authMiddleware, async (req, res) => {
@@ -145,7 +145,7 @@ router.get("/", authMiddleware, async (req, res) => {
       visibility: "private",
     }).populate("documents");
 
-    console.log("prim",primaryBots, "public", publicCustomBots, "private ", privateBots);
+    console.log("prim", primaryBots, "public", publicCustomBots, "private ", privateBots);
 
     res.json({
       primary: primaryBots,
@@ -273,15 +273,15 @@ router.delete("/:botId", authMiddleware, async (req, res) => {
   }
 });
 
-router.get('/bots/:id/documents', authMiddleware, async (req, res) => {
+router.get("/bots/:id/documents", authMiddleware, async (req, res) => {
   try {
-      const bot = await Bot.findById(req.params.id)
-                          .select('documents')
-                          .populate('documents', 'id');
-      res.json({ documents: bot?.documents || [] });
+    const bot = await Bot.findById(req.params.id)
+      .select("documents")
+      .populate("documents", "id");
+    res.json({ documents: bot?.documents || [] });
   } catch (error) {
-      res.status(500).json({ msg: "Error fetching bot documents" });
+    res.status(500).json({ msg: "Error fetching bot documents" });
   }
-})
+});
 
 module.exports = router;

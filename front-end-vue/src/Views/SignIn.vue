@@ -87,7 +87,7 @@ const handleLogin = async () => {
     return;
   }
 
-  router.push('/home'); // Redirect to the homepage on success
+  router.push('/explore'); // Redirect to the homepage on success
   MyToast.success("Logged In Successfully");
 };
 
