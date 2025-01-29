@@ -22,11 +22,20 @@ import uvicorn
 from nltk.tokenize import word_tokenize
 from dotenv import load_dotenv
 import nltk
-nltk.download('punkt')
-nltk.download('punkt', quiet=True)
-nltk.download('stopwords', quiet=True)
-nltk.download('wordnet', quiet=True)
-nltk.download('punkt_tab')
+try:
+    nltk.data.find('tokenizers/punkt')
+except LookupError:
+    nltk.download('punkt', quiet=True)
+
+try:
+    nltk.data.find('corpora/stopwords')
+except LookupError:
+    nltk.download('stopwords', quiet=True)
+
+try:
+    nltk.data.find('corpora/wordnet')
+except LookupError:
+    nltk.download('wordnet', quiet=True)
 from utils.pdf_extractor import PDFExtractor
 from utils.amharic_rag import ConcurrentTranslator
 
@@ -490,14 +499,13 @@ async def rag_qa(
         context_texts = [context] + [f"Chunk from doc {c['doc_id']}:\n{c['text']}" for c in chunks]
         context_str = "\n\n".join(context_texts)
         index = 0
+        amharic = ""
 
                 
         if language != "en":
             index = 1
             query = await translate_to_english(query)
             print("translated_query",query)
-            context_str = await translate_to_english(context_str)
-            print("translated_context",context_str)
 
         payload = {
     "contents": [{
@@ -540,7 +548,16 @@ async def rag_qa(
                     f"  * Response: 'Based on the provided context, I cannot answer this question. Can you provide more details or rephrase?'\n\n"
 
                     f"Begin by answering the following query:\n\n"
-                    f"Here is the relevant context:\n\n{context_str}\n\n"
+                    f"""
+                    **Step 1: Language Check**
+                    - Check if the context below has Amharic. If yes, translate it to English.
+
+                    **Context to Analyze:**
+                    {context_str}
+
+                    **Step 2: Translation (if needed)**
+                    - If you translated the context, use the English version for answering.
+                    \n\n"""
                     f"User question: {query}\n\n"
                     f"Answer:"
                 )

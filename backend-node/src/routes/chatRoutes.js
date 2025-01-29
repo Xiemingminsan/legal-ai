@@ -207,15 +207,16 @@ router.post("/ask-ai", authMiddleware, upload.single("file"), async (req, res) =
     }
 
     // Build context: summary + last messages + recent chunks
+    console.log("okay")
     const context = [
       conversation.summary,
-      ...conversation.conversation.slice(-20).map((msg) => `${msg.role}: ${msg.text}`),
-      ...conversation.chunksUsed
-        .slice(-5)
-        .map((chunk) => `Chunk from doc ${chunk.doc_id}:\n${chunk.text}`),
+      ...(conversation.conversation?.slice(-20) || []).map((msg) => `${msg.role}: ${msg.text}`),
+      ...(conversation.chunksUsed?.slice(-5) || []).map((chunk) => `Chunk from doc ${chunk.doc_id}:\n${chunk.text}`),
     ]
       .filter(Boolean)
-      .join("\n");
+      .join("\n")
+      
+      console.log("not okay")
 
     // Call AI service
     try {

@@ -165,7 +165,7 @@
                 <select v-model="file.language" :id="'docLang' + index" required
                   class="h-10 p-2 mt-1 block w-full rounded-md bg-sky-100 border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm">
                   <option value="en">English</option>
-                  <option value="am">Amharic</option>
+                  <option value="amh">Amharic</option>
                 </select>
               </div>
 
