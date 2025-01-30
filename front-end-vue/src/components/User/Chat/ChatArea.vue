@@ -250,7 +250,6 @@ const askAi = async () => {
 
     </div>
 
-    <!-- @todo reponsviness -->
     <!-- Input Areaa -->
     <form @submit.prevent="askAi"
       class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 md:mb-0 shadow-lg rounded-lg">
