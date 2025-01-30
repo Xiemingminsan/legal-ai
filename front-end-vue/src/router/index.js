@@ -22,7 +22,6 @@ import SharedChats from '@/components/User/Chat/SharedChats.vue'
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
-    // Landing page is now accessible at "/"
     { path: '/land', component: LandingPage },
     { path: '/SignUp', component: SignUp },
     { path: '/SignIn', component: SignIn },
@@ -42,7 +41,6 @@ const router = createRouter({
         { path: 'sharedChats/:id', component: SharedChats },
       ],
     },
-
     {
       path: '/admin',
       component: AdminBaseLayout,
@@ -55,43 +53,42 @@ const router = createRouter({
         { path: 'settings', component: AdminSettings },
       ],
     },
-    // },
-    { path: '/:pathMatch(.*)*', redirect: '/explore' }, // Redirect unknown routes to the landing page if not logged in else to home
+    { path: '/:pathMatch(.*)*', redirect: '/land' },
   ],
 })
 
-// router.beforeEach((to, from) => {
-//   const authStore = useAuthStore()
-//   const publicPaths = ['/land', '/SignUp', '/SignIn']
-//   const adminRoutes = [
-//     '/admin',
-//     '/admin/dashboard',
-//     '/admin/users',
-//     '/admin/bots',
-//     '/admin/bot/:id',
-//     '/admin/createBot',
-//     '/admin/settings',
-//   ]
+// Uncomment and use this navigation guard for protection
+router.beforeEach((to, from) => {
+  const authStore = useAuthStore()
+  const publicPaths = ['/land', '/SignUp', '/SignIn']
+  const adminRoutes = [
+    '/admin',
+    '/admin/dashboard',
+    '/admin/users',
+    '/admin/bots',
+    '/admin/bot/:id',
+    '/admin/createBot',
+    '/admin/settings',
+  ]
 
-//   // Handle public routes
-//   if (publicPaths.includes(to.path)) {
-//     // Redirect authenticated users away from public routes
-//     return authStore.token ? '/home' : true
-//   }
+  // Handle public routes
+  if (publicPaths.includes(to.path)) {
+    return authStore.token ? '/home' : true
+  }
 
-//   // Check authentication for non-public routes
-//   if (!authStore.token) {
-//     return '/SignIn'
-//   }
+  // Check authentication for non-public routes
+  if (!authStore.token) {
+    return '/SignIn'
+  }
 
-//   // Restrict admin routes to admins only
-//   if (adminRoutes.some((route) => to.path.startsWith(route))) {
-//     if (authStore.role !== 'admin') {
-//       return '/home' // Redirect non-admin users to the home page
-//     }
-//   }
+  // Restrict admin routes to admins only
+  if (adminRoutes.some((route) => to.path.startsWith(route))) {
+    if (authStore.role !== 'admin') {
+      return '/home'
+    }
+  }
 
-//   return true
-// })
+  return true
+})
 
 export default router

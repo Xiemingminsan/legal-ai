@@ -304,6 +304,16 @@ async def shutdown_event():
     """Save state on shutdown."""
     await global_state.save_state()
 
+@app.post("/reload")
+async def reload_state():
+    """Reload the global state from disk"""
+    try:
+        global_state.initialize()  # Reinitialize the state
+        return {"status": "success", "message": "State reloaded from disk"}
+    except Exception as e:
+        logger.error(f"Error reloading state: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/embed_documents")
 async def embed_documents(
     doc_ids: List[str] = Form(...),
@@ -384,6 +394,7 @@ async def embed_documents(
     # Save state after processing all documents
     try:
         await global_state.save_state()
+        await reload_state()  # Add this line
     except Exception as e:
         logger.error(f"Error saving global state: {e}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail="Failed to save state after processing documents")
