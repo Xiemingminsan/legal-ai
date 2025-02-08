@@ -1,16 +1,21 @@
 import { useAuthStore } from '@/stores/authStore'
 
 export default class MyHttpService {
+  // static FRONT_END_URL = 'http://etlegalchat.tech' // Replace with your backend URL
 
-  static FRONT_END_URL = 'http://etlegalchat.tech' // Replace with your backend URL
+  // static BASE_URL = 'http://etlegalchat.tech' // Replace with your backend URL
 
+  // static API_BASE_URL = 'http://etlegalchat.tech/api' // Replace with your backend URL
 
-  static BASE_URL = 'http://etlegalchat.tech' // Replace with your backend URL
+  // static PYTHON_MICRO_SERVICE_API_URL = '164.92.79.82:8000' // Replace with your backend URL
 
-  static API_BASE_URL = 'http://etlegalchat.tech/api' // Replace with your backend URL
+  static FRONT_END_URL = 'http://localhost:5173'
 
-  static PYTHON_MICRO_SERVICE_API_URL = '164.92.79.82:8000' // Replace with your backend URL
+  static BASE_URL = 'http://localhost:5000'
 
+  static API_BASE_URL = 'http://localhost:5000/api'
+
+  static PYTHON_MICRO_SERVICE_API_URL = 'http://localhost:8000'
 
   static delay(ms = 0) {
     return new Promise((resolve) => setTimeout(resolve, ms))
