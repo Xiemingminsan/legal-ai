@@ -16,7 +16,7 @@
           <ul class="flex flex-col space-y-2">
             <li v-for="item in [
               { name: t('explore'), path: '/explore', icon: 'ri-compass-line' },
-              { name: t('home'), path: '/home', icon: 'ri-home-line' },
+              { name: t('contracts'), path: '/contracts', icon: 'ri-file-list-line' },
               { name: t('createBot'), path: '/createBot', icon: 'ri-add-box-line' },
               { name: t('chats'), path: '/chats', icon: 'ri-message-2-line' },
               { name: t('account'), path: '/myaccount', icon: 'ri-user-line' }
@@ -60,7 +60,7 @@
         <ul class="flex justify-around items-center">
           <li v-for="item in [
             { name: t('Explore'), path: '/explore', icon: 'ri-compass-line' },
-            { name: t('Home'), path: '/home', icon: 'ri-home-line' },
+            { name: t('contracts'), path: '/contracts', icon: 'ri-file-list-line' },
             { name: t('createBot'), path: '/createBot', icon: 'ri-add-box-line' },
             { name: t('chats'), path: '/chats', icon: 'ri-message-2-line' },
             { name: t('Account'), path: '/myaccount', icon: 'ri-user-line' }

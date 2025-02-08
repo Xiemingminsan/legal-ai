@@ -18,6 +18,7 @@ import CreateNewBot from '@/Views/Admin/CreateNewBot.vue'
 import AdminSettings from '@/Views/Admin/AdminSettings.vue'
 import CreateBotUser from '@/Views/Users/CreateBotUser.vue'
 import SharedChats from '@/components/User/Chat/SharedChats.vue'
+import ContractGeneration from '@/Views/Users/ContractGeneration.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -33,6 +34,8 @@ const router = createRouter({
         { path: 'myaccount', component: MyAccount },
         { path: 'createBot', component: CreateBotUser },
         { path: 'explore', component: Explore },
+        { path: 'contracts', component: ContractGeneration },
+
         {
           path: 'chats',
           component: RecentChatsBar,

@@ -88,7 +88,7 @@ const handleShareChat = async (chat) => {
   }
   const sharedConversationId = response.sharedConversationId;
 
-  const link = `${MyHttpService.FRONT_END_URL}sharedChats/${sharedConversationId}`; // Construct the post link
+  const link = `${MyHttpService.FRONT_END_URL}/sharedChats/${sharedConversationId}`; // Construct the post link
   try {
     await navigator.clipboard.writeText(link);
 
