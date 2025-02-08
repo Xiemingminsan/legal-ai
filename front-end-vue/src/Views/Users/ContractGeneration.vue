@@ -10,7 +10,7 @@
         <div class="space-y-1">
           <label for="partyA" class="text-xs font-medium">Party A</label>
           <input type="text" id="partyA" v-model="contractDetails.partyA"
-            class="w-full px-2 py-1 border rounded-md dark:bg-gray-700 dark:border-gray-600"
+            class="w-full px-2  py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"
             placeholder="Enter Party A name" />
         </div>
 
@@ -18,7 +18,7 @@
         <div class="space-y-1">
           <label for="partyB" class="text-xs font-medium">Party B</label>
           <input type="text" id="partyB" v-model="contractDetails.partyB"
-            class="w-full px-2 py-1 border rounded-md dark:bg-gray-700 dark:border-gray-600"
+            class="w-full px-2 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"
             placeholder="Enter Party B name" />
         </div>
 
@@ -26,35 +26,26 @@
         <div class="space-y-1">
           <label for="contractType" class="text-xs font-medium">Contract Type</label>
           <select id="contractType" v-model="contractDetails.type"
-            class="w-full px-2 py-1 border rounded-md dark:bg-gray-700 dark:border-gray-600">
+            class="w-full px-2 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600">
             <option value="" disabled>Select contract type</option>
-            <option value="Employment Contract">Employment Contract</option>
-            <option value="Lease Agreement">Lease Agreement</option>
-            <option value="Service Agreement">Service Agreement</option>
-            <option value="Non-Disclosure Agreement">Non-Disclosure Agreement</option>
-            <option value="Sales Agreement">Sales Agreement</option>
-            <option value="Partnership Agreement">Partnership Agreement</option>
-            <option value="Loan Agreement">Loan Agreement</option>
-            <option value="Consulting Agreement">Consulting Agreement</option>
-            <option value="Freelance Agreement">Freelance Agreement</option>
-            <option value="Rental Agreement">Rental Agreement</option>
-            <!-- Add more options as needed -->
+            <option v-for="(content, type) in contractTemplates" :key="type" :value="type">
+              {{ type }}
+            </option>
           </select>
-
         </div>
 
         <!-- Start Date -->
         <div class="space-y-1">
           <label for="startDate" class="text-xs font-medium">Start Date</label>
           <input type="date" id="startDate" v-model="contractDetails.startDate"
-            class="w-full px-2 py-1 border rounded-md dark:bg-gray-700 dark:border-gray-600" />
+            class="w-full px-2 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" />
         </div>
 
         <!-- Duration -->
         <div class="space-y-1">
           <label for="duration" class="text-xs font-medium">Duration</label>
           <select id="duration" v-model="contractDetails.duration"
-            class="w-full px-2 py-1 border rounded-md dark:bg-gray-700 dark:border-gray-600">
+            class="w-full px-2 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600">
             <option value="1 month">1 month</option>
             <option value="3 months">3 months</option>
             <option value="6 months">6 months</option>
@@ -66,34 +57,6 @@
           </select>
         </div>
       </div>
-    </div>
-
-
-    <!-- Contract Clause Generator -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
-      <h2 class="text-xl font-semibold mb-4">Contract Clause Generator</h2>
-      <div class="mb-4">
-        <label for="generalDescription" class="block text-sm font-medium mb-1">General Contract Description</label>
-        <textarea id="generalDescription" v-model="contractClauses.generalDescription" rows="3"
-          class="w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"
-          placeholder="Enter general contract description"></textarea>
-      </div>
-      <div class="mb-4">
-        <h3 class="text-lg font-medium mb-2">Additional Clauses</h3>
-        <div v-for="(clause, index) in contractClauses.additionalClauses" :key="index" class="mb-4">
-          <div class="flex items-center mb-2">
-            <input type="checkbox" :id="'clause-' + index" v-model="clause.selected" class="mr-2">
-            <label :for="'clause-' + index" class="text-sm font-medium">{{ clause.name }}</label>
-          </div>
-          <textarea v-if="clause.selected" v-model="clause.content" rows="3"
-            class="w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"
-            :placeholder="'Enter ' + clause.name.toLowerCase() + ' details'"></textarea>
-        </div>
-      </div>
-      <button @click="generateContract"
-        class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md flex items-center justify-center w-full md:w-auto">
-        <i class="ri-file-text-line mr-2"></i> Generate Contract
-      </button>
     </div>
 
     <!-- Contract Preview -->
@@ -112,9 +75,9 @@
           </div>
         </div>
 
-        <textarea v-model="contractPreview" rows="10"
+        <textarea v-model="contractContent" rows="10"
           class="w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 mb-4 contractTextArea"
-          placeholder="Contract terms and conditions will appear here"></textarea>
+          placeholder="Contract terms and conditions will appear here" ></textarea>
 
         <div class="signaturesArea grid grid-cols-2 gap-4 mt-4">
           <div class="signatureArea">
@@ -136,16 +99,12 @@
         class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md flex items-center">
         <i class="ri-file-download-line mr-2"></i> Download as PDF
       </button>
-      <button @click="saveContract"
-        class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md flex items-center">
-        <i class="ri-save-line mr-2"></i> Save Contract
-      </button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 
 
 const contractDetails = ref({
@@ -156,32 +115,31 @@ const contractDetails = ref({
   duration: '1 year'
 })
 
-const contractClauses = ref({
-  generalDescription: '',
-  additionalClauses: [
-    { name: 'Termination Clause', selected: false, content: '' },
-    { name: 'Confidentiality Clause', selected: false, content: '' },
-    { name: 'Dispute Resolution', selected: false, content: '' },
-    { name: 'Intellectual Property', selected: false, content: '' },
-  ]
-})
 
-const contractPreview = ref('')
+const contractTemplates = {
+  'Employment Contract': 'This is an Employment Contract between Employer and Employee...',
+  'Lease Agreement': 'This Lease Agreement is made on [Date] between Landlord and Tenant...',
+  'Service Agreement': 'This Service Agreement is entered into between Provider and Client...',
+  'Non-Disclosure Agreement': 'This NDA is made between Disclosing Party and Receiving Party...',
+  'Sales Agreement': 'This Sales Agreement is between Seller and Buyer...',
+  'Partnership Agreement': 'This Partnership Agreement is made between Partner A and Partner B...',
+  'Loan Agreement': 'This Loan Agreement is made between Lender and Borrower...',
+  'Consulting Agreement': 'This Consulting Agreement is made between Consultant and Client...',
+  'Freelance Agreement': 'This Freelance Agreement is between Freelancer and Client...',
+  'Rental Agreement': 'This Rental Agreement is made on [Date] between Landlord and Renter...'
+};
 
-const generateContract = () => {
-  // Here you would typically send the contract details and clauses to your AI engine
-  // For now, we'll just update the preview with a placeholder
-  contractPreview.value = `This is a ${contractDetails.value.type} contract between ${contractDetails.value.partyA} and ${contractDetails.value.partyB}, starting from ${contractDetails.value.startDate} for a duration of ${contractDetails.value.duration}.
 
-${contractClauses.value.generalDescription}
 
-${contractClauses.value.additionalClauses
-      .filter(clause => clause.selected)
-      .map(clause => `${clause.name}:\n${clause.content}`)
-      .join('\n\n')}
 
-[AI-generated contract terms and conditions will appear here]`
-}
+const contractContent = ref('')
+
+// Watch for changes in contract type and update the content
+watch(() => contractDetails.value.type, (newType) => {
+  if (newType) {
+    contractContent.value = contractTemplates[newType] || '';
+  }
+});
 
 const downloadPDF = () => {
   const element = document.querySelector('#ContractPreview');
@@ -219,11 +177,6 @@ const downloadPDF = () => {
     console.error('ContractPreview div not found');
   }
 };
-
-const saveContract = () => {
-  // Logic to save the contract
-  console.log('Saving contract...')
-}
 
 
 
