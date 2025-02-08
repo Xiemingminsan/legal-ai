@@ -18,7 +18,7 @@
           <i class="hi-outline-currency-dollar text-yellow-500 text-2xl mr-2"></i>
           <div>
             <p class="text-lg font-bold text-gray-800 dark:text-white">
-              999 Birr / Month
+              {{ PAYMENT_AMOUNT }} Birr / Month
             </p>
             <p class="text-sm text-gray-500 dark:text-gray-400">
               Get access to all premium features.

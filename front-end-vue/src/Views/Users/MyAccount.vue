@@ -136,7 +136,7 @@
                     class="bg-white dark:bg-gray-800 rounded-lg shadow p-3 flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-2 sm:space-y-0">
                     <div class="flex items-center space-x-3">
                       <span class="text-lg font-semibold text-green-600 dark:text-green-400">
-                        ${{ payment.amount.toFixed(2) }}
+                        {{ payment.amount.toFixed(2) }} Birr
                       </span>
                       <span class="text-sm text-gray-500 dark:text-gray-400">
                         {{ MyUtils.formatTimestamp(payment.start_date) }}
