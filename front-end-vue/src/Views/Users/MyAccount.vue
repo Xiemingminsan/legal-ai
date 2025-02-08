@@ -17,8 +17,8 @@
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-8 w-full lg:w-[60%]">
           <div class="flex flex-row items-center justify-between mb-6 ">
             <div class="flex flex-row">
-              <img src="https://ui-avatars.com/api/?name=Abel+Derbe&background=random" alt="Profile Avatar"
-                class="w-24 h-24 rounded-full mb-4 sm:mb-0 sm:mr-6" />
+              <img :src="`https://ui-avatars.com/api/?name=${userModel?.username}&background=random`"
+                alt="Profile Avatar" class="w-24 h-24 rounded-full mb-4 sm:mb-0 sm:mr-6" />
               <div class="text-center sm:text-left ml-2 ">
                 <h2 class="text-2xl font-semibold">{{ userModel?.fullname }}.</h2>
                 <p class="text-gray-600 dark:text-gray-400">{{ userModel.username }}</p>
