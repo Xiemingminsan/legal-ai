@@ -19,6 +19,7 @@ import AdminSettings from '@/Views/Admin/AdminSettings.vue'
 import CreateBotUser from '@/Views/Users/CreateBotUser.vue'
 import SharedChats from '@/components/User/Chat/SharedChats.vue'
 import ContractGeneration from '@/Views/Users/ContractGeneration.vue'
+import ContractManagment from '@/Views/Admin/ContractManagment.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -53,6 +54,8 @@ const router = createRouter({
         { path: 'bots', component: AdminBotsListing },
         { path: 'bot/:id', component: AdminBotDetails },
         { path: 'createBot', component: CreateNewBot },
+        { path: 'contracts', component: ContractManagment },
+
         { path: 'settings', component: AdminSettings },
       ],
     },
@@ -71,6 +74,7 @@ router.beforeEach((to, from) => {
     '/admin/bots',
     '/admin/bot/:id',
     '/admin/createBot',
+    '/admin/contracts',
     '/admin/settings',
   ]
 

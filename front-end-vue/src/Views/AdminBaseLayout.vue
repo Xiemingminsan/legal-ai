@@ -63,6 +63,7 @@ const menuItems = ref([
   { name: 'Users', icon: 'ri-user-line', href: '/admin/users' },
   { name: 'Bots', icon: 'ri-file-list-3-line', href: '/admin/bots' },
   { name: 'Create Bot', icon: 'ri-bar-chart-box-line', href: '/admin/createBot' },
+  { name: 'Contracts', icon: 'ri-file-paper-line', href: '/admin/contracts' },
   { name: 'Settings', icon: 'ri-settings-line', href: '/admin/settings' },
 ]);
 

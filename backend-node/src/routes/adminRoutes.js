@@ -5,6 +5,8 @@ const axios = require("axios");
 const os = require("os");
 const si = require("systeminformation");
 const ChatHistory = require("../models/ChatHistory");
+const Contract = require("../models/Contract");
+
 const User = require("../models/User");
 const SystemPrompt = require("../models/SystemPrompt");
 const Document = require("../models/Document");
@@ -124,7 +126,115 @@ router.post("/suspendUser", async (req, res) => {
   }
 });
 
+router.get("/getContractsAdmin", async (req, res) => {
+  try {
+    const contracts = await Contract.find();
 
+    // Check if contracts are found
+    if (!contracts) {
+      return res.status(404).json({ msg: "No Contracts found" });
+    }
+
+    // Return the list of users
+    res.json(contracts);
+  } catch (error) {
+    console.error("Error fetching contracts:", error.message);
+    res.status(500).json({ msg: "Server error fetching contracts" });
+  }
+});
+
+router.post("/createContract", async (req, res) => {
+  try {
+    //@todo admin check here
+
+    console.log(req.body.contract);
+
+    const { type, content } = req.body.contract;
+
+    if ((!type, !content)) {
+      return res.status(400).json({ msg: "type and content is required" });
+    }
+
+    // Find contract with the given type
+    const existingContract = await Contract.findOne({ type });
+
+    if (existingContract) {
+      return res.status(400).json({ msg: "Contract with this type already exists" });
+    }
+
+    // Create a new contract
+    const newContract = new Contract({
+      type,
+      content,
+      createdAt: new Date(),
+    });
+
+    // Save the new contract to the database
+    await newContract.save();
+
+    res.json({ msg: "Contract created successfully", contract: newContract });
+  } catch (error) {
+    console.error("Error created Contract :", error.message);
+    res.status(500).json({ msg: "Server error created Contract " });
+  }
+});
+
+router.post("/editContract", async (req, res) => {
+  try {
+    //@todo admin check here
+
+    console.log(req.body);
+
+    const { type, content, _id } = req.body.contract;
+
+    if ((!type, !content, !_id)) {
+      return res.status(400).json({ msg: "type,content,_id is required" });
+    }
+
+
+    // Update the contract with the given _id
+    const updatedContract = await Contract.findByIdAndUpdate(
+      _id,
+      { type, content },
+      { new: true }
+    );
+
+    if (!updatedContract) {
+      return res.status(404).json({ msg: "Contract not found" });
+    }
+
+    res.json({ msg: "Contract Updated successfully", contract: updatedContract });
+  } catch (error) {
+    console.error("Error updating Contract :", error.message);
+    res.status(500).json({ msg: "Server error updating Contract " });
+  }
+});
+
+router.post("/deleteContract", async (req, res) => {
+  try {
+    //@todo admin check here
+
+    console.log(req.body);
+
+    const { contractId } = req.body;
+
+    if (!contractId) {
+      return res.status(400).json({ msg: "contractId is required" });
+    }
+
+    // Find contract with the given type
+    const deletedContract = await Contract.findByIdAndDelete(contractId);
+
+    if (!deletedContract) {
+      return res.status(404).json({ msg: "Contract Not Found" });
+    }
+
+    res.json({ msg: "Contract Deleted successfully" });
+  } catch (error) {
+    console.error("Error Deleting Contract", error.message);
+    res.status(500).json({ msg: "Server error Deleting Contract" });
+  }
+});
 
 router.get("/getDashboardData", async (req, res) => {
   try {
@@ -258,7 +368,7 @@ router.get("/getBot", async (req, res) => {
       return res.status(404).json({ msg: "Bot not found" });
     }
 
-    console.log(bot)
+    console.log(bot);
     // Return the bot along with populated documents and creator
     res.json(bot);
   } catch (error) {

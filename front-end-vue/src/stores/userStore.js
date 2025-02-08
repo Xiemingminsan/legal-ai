@@ -148,8 +148,6 @@ export const useUserStore = defineStore('userStore', () => {
     }
   }
 
-
-
   async function shareChat(conversationId) {
     try {
       const response = await MyHttpService.post(`/chat/shareChat`, {
@@ -189,11 +187,31 @@ export const useUserStore = defineStore('userStore', () => {
       return { error: 'Internal Error' }
     }
   }
+
+  async function getContracts() {
+    try {
+      const response = await MyHttpService.get(`/documents/getContracts`, {
+        useJWT: true,
+      })
+      console.log(response)
+      // If response contains error, return that immediately
+      if (response.error) {
+        return { error: response.error || 'Unable To Get Contracts' }
+      }
+
+      return response
+    } catch (err) {
+      console.error(err) // Log the error in the console
+
+      return { error: 'Internal Error' }
+    }
+  }
   return {
     getAllValidDocuments,
     getRecentChats,
     getExploreBots,
     getConversation,
+    getContracts,
     createNewChat,
     deleteChat,
     askAi,

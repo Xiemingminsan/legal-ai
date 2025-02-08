@@ -154,11 +154,93 @@ export const useAdminStore = defineStore('adminStore', () => {
     }
   }
 
+  async function getContractsAdmin() {
+    try {
+      const response = await MyHttpService.get('/admin/getContractsAdmin', {
+        useJWT: true,
+      })
+
+      // If response contains error, return that immediately
+      if (response.error) {
+        return { error: response.error || 'Unable To Get Contracs Data' }
+      }
+
+      return response
+    } catch (err) {
+      console.error(err) // Log the error in the console
+
+      return { error: 'Internal Error' }
+    }
+  }
+
+  async function createContract(contract) {
+    try {
+      const response = await MyHttpService.post('/admin/createContract', {
+        useJWT: true,
+        body: { contract: contract },
+      })
+
+      // If response contains error, return that immediately
+      if (response.error) {
+        return { error: response.error || 'Unable To Create Contract' }
+      }
+
+      return response
+    } catch (err) {
+      console.error(err) // Log the error in the console
+
+      return { error: 'Internal Error' }
+    }
+  }
+
+  async function editContract(contract) {
+    try {
+      const response = await MyHttpService.post('/admin/editContract', {
+        useJWT: true,
+        body: { contract: contract },
+      })
+
+      // If response contains error, return that immediately
+      if (response.error) {
+        return { error: response.error || 'Unable To Edit Contract' }
+      }
+
+      return response
+    } catch (err) {
+      console.error(err) // Log the error in the console
+
+      return { error: 'Internal Error' }
+    }
+  }
+
+  async function deleteContract(contractId) {
+    try {
+      const response = await MyHttpService.post('/admin/deleteContract', {
+        useJWT: true,
+        body: { contractId },
+      })
+
+      // If response contains error, return that immediately
+      if (response.error) {
+        return { error: response.error || 'Unable To Delete Contract' }
+      }
+
+      return response
+    } catch (err) {
+      console.error(err) // Log the error in the console
+
+      return { error: 'Internal Error' }
+    }
+  }
   return {
     getServerHealth,
     getDashboardData,
     updateSystemPrompt,
+    getContractsAdmin,
+    createContract,
     deleteBot,
+    editContract,
+    deleteContract,
     getBot,
     getAllBots,
     getAllUsers,
