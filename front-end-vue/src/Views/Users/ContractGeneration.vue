@@ -1,5 +1,27 @@
 <template>
-  <div class="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-white p-4 md:p-8">
+
+  <div v-if="!authStore.proAccount" class="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
+    <div class="text-center p-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg max-w-md w-full">
+      <div class="mb-6">
+        <i class="ri-vip-crown-2-line text-6xl text-yellow-500"></i>
+      </div>
+      <h2 class="text-2xl font-bold mb-4 text-gray-800 dark:text-white">
+        Unlock Premium Features
+      </h2>
+      <p class="mb-6 text-gray-600 dark:text-gray-300">
+        Upgrade to a Pro account to create and manage your own bots. Enjoy exclusive features and take your experience
+        to the next level!
+      </p>
+      <div class="flex justify-center">
+        <BuyPremiumBtn />
+      </div>
+      <p class="mt-4 text-sm text-gray-500 dark:text-gray-400">
+        With a Pro account, you can create customized bot for our own personal use!.
+      </p>
+    </div>
+  </div>
+
+  <div v-else class="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-white p-4 md:p-8">
     <h1 class="text-3xl font-bold mb-6 text-center">Contract Generator</h1>
 
     <!-- Contract Details -->
@@ -77,7 +99,7 @@
 
         <textarea v-model="contractContent" rows="10"
           class="w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 mb-4 contractTextArea"
-          placeholder="Contract terms and conditions will appear here" ></textarea>
+          placeholder="Contract terms and conditions will appear here"></textarea>
 
         <div class="signaturesArea grid grid-cols-2 gap-4 mt-4">
           <div class="signatureArea">
@@ -105,7 +127,9 @@
 
 <script setup>
 import { ref, watch } from 'vue'
-
+import { useAuthStore } from '@/stores/authStore';
+import BuyPremiumBtn from '@/components/User/BuyPremiumBtn.vue';
+const authStore = useAuthStore();
 
 const contractDetails = ref({
   partyA: '',

@@ -47,7 +47,7 @@
           <input type="hidden" name="title" value="Let us do this" />
           <input type="hidden" name="description" value="Paying with Confidence with cha" />
           <input type="hidden" name="logo" value="/logo.png" />
-          <input type="hidden" name="return_url" :value="MyHttpService.FRONT_END_URL + 'myaccount?txRef=' + txRef" />
+          <input type="hidden" name="return_url" :value="MyHttpService.FRONT_END_URL + '/myaccount?txRef=' + txRef" />
           <input type="hidden" name="meta[title]" value="test" />
           <!-- Proceed Button -->
           <button
