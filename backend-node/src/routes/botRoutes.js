@@ -51,6 +51,7 @@ router.post("/add", authMiddleware, upload.array("files"), async (req, res) => {
     }
 
     // Create bot
+    const parsedCategories = categories ? categories.split(",").map(cat => cat.trim()) : [];
     const bot = new Bot({
       name,
       description,
@@ -59,7 +60,7 @@ router.post("/add", authMiddleware, upload.array("files"), async (req, res) => {
       systemPrompt,
       type,
       creator: req.user.userId,
-      categories,
+      categories: parsedCategories,
     });
 
     await bot.save();

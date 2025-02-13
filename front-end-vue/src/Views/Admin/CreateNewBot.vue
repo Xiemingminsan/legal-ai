@@ -420,6 +420,8 @@ const createBot = async () => {
   console.log('Bot data to be sent:', {
     name: botName.value,
     description: botDesc.value,
+    category: category.value,
+
     visibility: isPublic.value ? 'public' : 'private',
     files: uploadedFiles.value.map(f => f.name),
     metadata,
@@ -528,7 +530,7 @@ const resetForm = () => {
   botImage.value = null;
   previewImage.value = null;
   isPublic.value = false;
-  category.value = '';
+  category.value = [];
   uploadedFiles.value = [];
   selectedExistingFiles.value = [];
 };
