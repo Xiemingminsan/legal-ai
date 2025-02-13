@@ -6,7 +6,9 @@
       <!-- Logo section -->
       <div class="p-6 border-b border-gray-200 dark:border-gray-700">
         <div class="flex flex-col items-center justify-between h-full p-1">
-          <img src="@/assets/logo.png" alt="Logo" class="w-[120px]" />
+          <div class="border rounded-xl overflow-hidden">
+            <img src="@/assets/logo.png" alt="Logo" class="w-[120px]" />
+          </div>
         </div>
       </div>
 
