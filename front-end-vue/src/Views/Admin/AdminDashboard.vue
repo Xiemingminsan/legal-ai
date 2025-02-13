@@ -12,10 +12,12 @@
     <!-- Summary Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       <DashboardCard title="Total Users" :value="headerData.totalUsers" icon="ri-user-line" color="blue" />
-      <DashboardCard title="Active Cases" value="NaN Bruh" icon="ri-file-list-3-line" color="green" />
+      <DashboardCard title="Total Contracts Generated" :value="4" icon="ri-file-list-3-line"
+        color="green" />
       <DashboardCard title="Total AI Bots" :value="headerData.totalBots" icon="ri-robot-line" color="purple" />
       <DashboardCard title="Files Uploaded" :value="headerData.totalDocuments" icon="ri-file-upload-line"
         color="orange" />
+
     </div>
 
     <!-- Files Uploaded Graph -->

@@ -87,7 +87,7 @@
           <!-- Default System Prompt -->
           <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-lg mb-6">
             <h3 class="text-lg font-semibold mb-4">System Prompt</h3>
-            <textarea v-model="systemPrompt" rows="4"
+            <textarea v-model="systemPrompt" rows="10"
               class="w-full bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-md p-2 mb-4"
               placeholder="Enter default system prompt"></textarea>
             <div class="flex justify-end space-x-2">

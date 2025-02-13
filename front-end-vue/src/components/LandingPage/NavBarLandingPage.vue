@@ -20,7 +20,7 @@
         </div>
         <div class="hidden md:block">
           <DarkModeToggle />
-          <router-link to="/SignIn"
+          <router-link to="/signin"
             class="ml-20 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium">
             Login
           </router-link>
@@ -53,7 +53,7 @@
       </div>
       <div class="pt-4 pb-3 border-t border-gray-200 dark:border-gray-700">
         <div class="flex items-center px-5">
-          <router-link to="/SignIn"
+          <router-link to="/signin"
             class="mr-10 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium">
             Login
           </router-link>

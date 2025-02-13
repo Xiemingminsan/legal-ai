@@ -147,7 +147,7 @@
         <div class="mt-5 text-center">
           <p class="text-sm text-gray-600 dark:text-gray-400">
             Already Have an Account?
-            <router-link to="/signIn"
+          <router-link to="/signIn"
               class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
               Sign In
             </router-link>
