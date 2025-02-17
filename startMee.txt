@@ -23,3 +23,19 @@ npm run dev
 cd 'D:\Senior\Legal-AI\legal-ai\ai-microservice-python'
 venv\Scripts\activate
     python -m uvicorn main:app --reload --port 8000
+
+
+
+
+
+
+
+
+---------------------work
+cd c:\Users\mmcy\Desktop\s\legal-ai\front-end-vue
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+npm run dev
+
+cd c:\Users\mmcy\Desktop\s\legal-ai\backend-node
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+npm run dev
