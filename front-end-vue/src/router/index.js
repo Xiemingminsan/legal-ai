@@ -66,7 +66,7 @@ const router = createRouter({
 // Uncomment and use this navigation guard for protection
 router.beforeEach((to, from) => {
   const authStore = useAuthStore()
-  const publicPaths = ['/land', '/SignUp', '/SignIn']
+  const publicPaths = ['/land', '/signup', '/signin']
   const adminRoutes = [
     '/admin',
     '/admin/dashboard',
@@ -85,7 +85,7 @@ router.beforeEach((to, from) => {
 
   // Check authentication for non-public routes
   if (!authStore.token) {
-    return '/SignIn'
+    return '/signin'
   }
 
   // Restrict admin routes to admins only
