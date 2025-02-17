@@ -36,7 +36,7 @@
       </div>
 
       <!-- Message Text -->
-      <p>{{ message.text }}</p>
+      <p v-html="formattedText"></p>
 
       <!-- Timestamp -->
       <span v-if="message.role === 'user'" class="text-xs text-gray-300 block text-right mt-1">
@@ -48,14 +48,19 @@
 
 
 <script setup>
-import { defineProps } from 'vue';
+import { defineProps,computed } from 'vue';
 import { MyUtils } from '@/utils/Utils';
 import MyHttpService from '@/stores/MyHttpService';
+import { marked } from "marked";
+
+
 const props = defineProps({
   message: {
     type: Object,
     required: true,
   },
 });
+const formattedText = computed(() => marked(props.message.text));
+
 console.log(props.message.file);
 </script>
