@@ -109,10 +109,9 @@
               <p class="mb-4"><strong>Start Date:</strong> {{ contractDetails.startDate || '[Start Date]' }}</p>
             </div>
           </div>
-
-          <textarea v-model="contractContent" rows="10"
-            class="w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 mb-4 contractTextArea"
-            placeholder="Contract terms and conditions will appear here"></textarea>
+            <RichTextEditor v-model="contractContent"
+                    class="w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 mb-4 contractTextArea"
+                    placeholder="Contract terms and conditions here..." />
 
           <div class="signaturesArea grid grid-cols-2 gap-4 mt-4">
             <div class="signatureArea">
@@ -146,6 +145,7 @@ import { ref, watch, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/authStore';
 import { useUserStore } from '@/stores/userStore';
 import BuyPremiumBtn from '@/components/User/BuyPremiumBtn.vue';
+import RichTextEditor  from '@/components/Basics/RichTextEditor.vue';
 const authStore = useAuthStore();
 const userStore = useUserStore();
 import { MyToast } from '@/utils/toast';
@@ -201,42 +201,42 @@ watch(() => contractDetails.value.type, (newTypeId) => {
     contractDetails.value.title = selectedContract ? selectedContract.type : '';
   }
 });
-
 const downloadPDF = () => {
   const element = document.querySelector('#ContractPreview');
 
-  if (element) {
-    // Get the text content of the div
-    const contractText = element.innerHTML || element.innerText;
-
-    // Create the final HTML with the existing CSS and the content
-    const contentToPrint = `
-      <html>
-        <head>
-          <style>
-            ${contractPreviewCss}
-          </style>
-        </head>
-        <body>
-          <div id="contractPreview">${contractText}</div>
-        </body>
-      </html>
-    `;
-
-    // Open a new window for printing
-    // const printWindow = window.open('', '', 'width=800,height=600');
-    const printWindow = window.open('', '');
-
-    printWindow.document.write(contentToPrint);
-    printWindow.document.close();
-
-    // Wait for the document to fully load, then trigger print
-    printWindow.onload = function () {
-      // printWindow.print();
-    };
-  } else {
+  if (!element) {
     console.error('ContractPreview div not found');
+    return;
   }
+
+  // Clone the contract preview div
+  const clonedElement = element.cloneNode(true);
+
+  // Remove tooltips and interactive elements if any
+  clonedElement.querySelectorAll('[data-tooltip], .tooltip, button, select, input, svg').forEach(el => el.remove());
+
+  // Get the formatted contract HTML
+  const contractHtml = clonedElement.outerHTML;
+
+  // Create the final HTML with styles
+  const contentToPrint = `
+    <html>
+      <head>
+        <style>${contractPreviewCss}</style>
+      </head>
+      <body>${contractHtml}</body>
+    </html>
+  `;
+
+  // Open a new print window
+  const printWindow = window.open('', '', 'width=800,height=600');
+  printWindow.document.write(contentToPrint);
+  printWindow.document.close();
+
+  // Wait for the document to fully load, then trigger print
+  printWindow.onload = () => {
+    printWindow.print();
+  };
 };
 
 

@@ -12,9 +12,9 @@
 
       <div class="space-y-2 mt-4">
         <label class="text-xs font-medium dark:text-gray-200">Contract Content</label>
-        <textarea v-model="localContract.content" rows="10"
-          class="w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:text-white dark:border-gray-600"
-          placeholder="Contract details..."></textarea>
+        <RichTextEditor v-model="localContract.content"
+                    class="w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                    placeholder="Contract details..." />
       </div>
 
       <div class="flex justify-end space-x-3 mt-4">
@@ -35,7 +35,7 @@
 
 <script setup>
 import { ref, watch } from 'vue';
-
+import RichTextEditor  from '@/components/Basics/RichTextEditor.vue';
 const props = defineProps({
   showModal: Boolean,
   contractData: Object, // Optional (for editing)
