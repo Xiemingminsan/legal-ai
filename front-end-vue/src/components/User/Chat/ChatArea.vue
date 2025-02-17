@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch, nextTick, onUnmounted } from 'vue'; // Added nextTick import
+import { ref, onMounted, watch, nextTick, onUnmounted ,computed} from 'vue'; // Added nextTick import
 import { useUserStore } from '@/stores/userStore';
 import { MyToast } from '@/utils/toast';
 import ErrorRetryComp from '@/components/Basics/ErrorRetryComp.vue';
@@ -44,6 +44,16 @@ const allowedTypes = [
   "image/gif",
 ];
 
+
+// Toggle function
+const toggleLanguage = () => {
+  selectedLanguage.value = selectedLanguage.value === 'en' ? 'amh' : 'en';
+};
+
+// Computed property for the placeholder text
+const placeholderText = computed(() => {
+  return selectedLanguage.value === 'en' ? 'Type your message...' : 'እባኮትን መልእክትዎን ይፃፉ';
+});
 
 const getConversation = async () => {
   isLoading.value = true;
@@ -254,19 +264,19 @@ const askAi = async () => {
     <form @submit.prevent="askAi"
       class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 md:mb-0 shadow-lg rounded-lg">
       <div class="flex items-center gap-3">
-        <!-- Language Dropdown -->
-        <select v-model="selectedLanguage"
-          class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:bg-gray-700 dark:text-gray-200 transition duration-200 ease-in-out"
-          aria-label="Select language">
-          <option value="en">English</option>
-          <option value="amh">Amharic</option>
-        </select>
+        <!-- Language toogle -->
+        <button
+          @click="toggleLanguage"
+          class="px-3 py-2 w-[50px] rounded-lg border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:bg-gray-700 dark:text-gray-200 transition duration-200 ease-in-out"
+          aria-label="Toggle Language">
+          {{ selectedLanguage === 'en' ? 'En' : 'አማ' }}
+        </button>
 
         <!-- Message Input -->
         <div class="relative flex-1">
-          <input v-model="messageToSend" type="text" placeholder="Type your message..."
-            class="w-full rounded-lg border border-gray-300 dark:border-gray-600 py-2 px-4 pr-10 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:bg-gray-700 dark:text-gray-200 transition duration-200 ease-in-out"
-            aria-label="Message input" />
+          <input v-model="messageToSend" type="text" :placeholder="placeholderText"
+          class="w-full rounded-lg border border-gray-300 dark:border-gray-600 py-2 px-4 pr-10 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:bg-gray-700 dark:text-gray-200 transition duration-200 ease-in-out"
+          aria-label="Message input" />
 
           <!-- Send Button (inside input) -->
           <button type="submit"
