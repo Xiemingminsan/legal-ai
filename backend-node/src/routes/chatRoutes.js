@@ -57,142 +57,6 @@ router.use((err, req, res, next) => {
   }
 });
 
-// router.post("/ask-ai", authMiddleware, upload.single("file"), async (req, res) => {
-//   try {
-//     const { query, conversationId, language } = req.body;
-//     const userId = req.user.userId;
-
-//     if (!query) {
-//       return res.status(400).json({ msg: "Query cannot be empty" });
-//     }
-
-//     let fileData = null;
-//     let processedFile = null;
-//     let counter = false;
-
-//     // Process uploaded file
-//     if (req.file) {
-//       try {
-//         counter=true;
-//         processedFile = await processUploadedFile(req.file);
-        
-//         fileData = {
-//           filename: req.file.filename,
-//           filetype: req.file.mimetype,
-//           fileSize: (req.file.size / 1048576).toFixed(2),
-//           filedownloadUrl: `uploads/userChatUpload/${req.file.filename}`,
-//           processedContent: processedFile.content
-//         };
-
-//         console.log("File processed successfully:", processedFile);
-//       } catch (error) {
-//         console.error("File processing error:", error);
-//         return res.status(400).json({ msg: "Error processing uploaded file" });
-//       }
-//     } else {
-//       counter=false
-//     }
-
-//     // Initialize or find conversation
-//     let conversation = conversationId 
-//       ? await ChatHistory.findOne({ _id: conversationId, userId })
-//       : new ChatHistory({ userId, conversation: [], chunksUsed: [], summary: "" });
-
-//     if (conversationId && !conversation) {
-//       return res.status(404).json({ msg: "Conversation not found" });
-//     }
-
-//     // Find bot
-//     const bot = await Bot.findById(conversation.botId).populate("documents");
-//     if (!bot) {
-//       return res.status(404).json({ msg: "Bot not found" });
-//     }
-
-//     // Add message to conversation
-//     conversation.conversation.push({
-//       role: "user",
-//       text: query,
-//       fileTextContent: processedFile?.type === 'pdf' ? processedFile.content : null,
-//       file: fileData
-//     });
-
-
-//     // Build context with file content
-//     const context = [
-//       conversation.summary,
-//       ...(conversation.conversation?.slice(-20) || []).map(msg => {
-//         let msgText = `${msg.role}: ${msg.text}`;
-//         if (msg.file && counter == true) {
-//           console.log("File content found in context:", msg.file);
-//           msgText += `\n This is the File or Image content the user sent inline from the chat and is additonal context, If found no answer from the normal context, refer to this and check as well: ${msg.file}`;
-//         }
-//         return msgText;
-//       }),
-//       ...(conversation.chunksUsed?.slice(-5) || []).map(chunk => 
-//         `Chunk from doc ${chunk.doc_id}:\n${chunk.text}`
-//       )
-//     ].filter(Boolean).join("\n");
-
-//     // Call AI service with enhanced payload
-//     const aiServiceUrl = process.env.AI_SERVICE_URL || "http://localhost:8000";
-//     const payload = new URLSearchParams({
-//       language: language || "en",
-//       query,
-//       context,
-//       bot_id: bot._id.toString(),
-//       top_k: "10"
-//     });
-
-//     // Add image data if present
-//     if (processedFile?.type === 'image') {
-//       payload.append('image_data', processedFile.content);
-//       payload.append('image_type', processedFile.mimeType);
-//     }
-
-//     const aiResponse = await axios.post(
-//       `${aiServiceUrl}/qa`,
-//       payload,
-//       { 
-//         headers: { 
-//           "Content-Type": "application/x-www-form-urlencoded",
-//           "Max-Content-Length": "50mb"
-//         } 
-//       }
-//     );
-
-//     if (!aiResponse.data || !aiResponse.data.answer) {
-//       throw new Error("Invalid response from AI service");
-//     }
-
-//     // Update conversation with AI response
-//     conversation.conversation.push({
-//       role: "bot",
-//       text: aiResponse.data.answer
-//     });
-
-//     if (aiResponse.data.chunksUsed?.length > 0) {
-//       conversation.chunksUsed = [
-//         ...conversation.chunksUsed, 
-//         ...aiResponse.data.chunksUsed
-//       ].slice(-50);
-//     }
-
-//     await conversation.save();
-
-//     return res.json({
-//       conversationId: conversation._id,
-//       conversation: conversation.conversation
-//     });
-
-//   } catch (error) {
-//     console.error("Error in /ask-ai:", error.message);
-//     return res.status(500).json({
-//       msg: "Server error in AI communication",
-//       error: error
-//     });
-//   }
-// });
-
 router.post("/ask-ai", authMiddleware, upload.single("file"), async (req, res) => {
   try {
     const { query, conversationId, language } = req.body;
@@ -206,11 +70,12 @@ router.post("/ask-ai", authMiddleware, upload.single("file"), async (req, res) =
     let processedFile = null;
     let counter = false;
 
+    // Process uploaded file
     if (req.file) {
       try {
-        counter = true;
+        counter=true;
         processedFile = await processUploadedFile(req.file);
-
+        
         fileData = {
           filename: req.file.filename,
           filetype: req.file.mimetype,
@@ -225,10 +90,11 @@ router.post("/ask-ai", authMiddleware, upload.single("file"), async (req, res) =
         return res.status(400).json({ msg: "Error processing uploaded file" });
       }
     } else {
-      counter = false;
+      counter=false
     }
 
-    let conversation = conversationId
+    // Initialize or find conversation
+    let conversation = conversationId 
       ? await ChatHistory.findOne({ _id: conversationId, userId })
       : new ChatHistory({ userId, conversation: [], chunksUsed: [], summary: "" });
 
@@ -236,11 +102,13 @@ router.post("/ask-ai", authMiddleware, upload.single("file"), async (req, res) =
       return res.status(404).json({ msg: "Conversation not found" });
     }
 
+    // Find bot
     const bot = await Bot.findById(conversation.botId).populate("documents");
     if (!bot) {
       return res.status(404).json({ msg: "Bot not found" });
     }
 
+    // Add message to conversation
     conversation.conversation.push({
       role: "user",
       text: query,
@@ -248,19 +116,66 @@ router.post("/ask-ai", authMiddleware, upload.single("file"), async (req, res) =
       file: fileData
     });
 
-    // FAKE AI RESPONSE
-    const fakeAiResponse = `### 🤖 AI Response  
-✅ **Key Information:** This is a sample response.  
-📌 **Your Query:** "${query}"  
-📚 **Possible Explanation:**  
-- AI is currently unavailable, so this is a placeholder response.  
-- The real AI would analyze legal documents and provide structured feedback.  
-- Please try again later for a more detailed answer.`;
 
+    // Build context with file content
+    const context = [
+      conversation.summary,
+      ...(conversation.conversation?.slice(-20) || []).map(msg => {
+        let msgText = `${msg.role}: ${msg.text}`;
+        if (msg.file && counter == true) {
+          console.log("File content found in context:", msg.file);
+          msgText += `\n This is the File or Image content the user sent inline from the chat and is additonal context, If found no answer from the normal context, refer to this and check as well: ${msg.file}`;
+        }
+        return msgText;
+      }),
+      ...(conversation.chunksUsed?.slice(-5) || []).map(chunk => 
+        `Chunk from doc ${chunk.doc_id}:\n${chunk.text}`
+      )
+    ].filter(Boolean).join("\n");
+
+    // Call AI service with enhanced payload
+    const aiServiceUrl = process.env.AI_SERVICE_URL || "http://localhost:8000";
+    const payload = new URLSearchParams({
+      language: language || "en",
+      query,
+      context,
+      bot_id: bot._id.toString(),
+      top_k: "10"
+    });
+
+    // Add image data if present
+    if (processedFile?.type === 'image') {
+      payload.append('image_data', processedFile.content);
+      payload.append('image_type', processedFile.mimeType);
+    }
+
+    const aiResponse = await axios.post(
+      `${aiServiceUrl}/qa`,
+      payload,
+      { 
+        headers: { 
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Max-Content-Length": "50mb"
+        } 
+      }
+    );
+
+    if (!aiResponse.data || !aiResponse.data.answer) {
+      throw new Error("Invalid response from AI service");
+    }
+
+    // Update conversation with AI response
     conversation.conversation.push({
       role: "bot",
-      text: fakeAiResponse
+      text: aiResponse.data.answer
     });
+
+    if (aiResponse.data.chunksUsed?.length > 0) {
+      conversation.chunksUsed = [
+        ...conversation.chunksUsed, 
+        ...aiResponse.data.chunksUsed
+      ].slice(-50);
+    }
 
     await conversation.save();
 
@@ -277,6 +192,91 @@ router.post("/ask-ai", authMiddleware, upload.single("file"), async (req, res) =
     });
   }
 });
+
+// router.post("/ask-ai", authMiddleware, upload.single("file"), async (req, res) => {
+//   try {
+//     const { query, conversationId, language } = req.body;
+//     const userId = req.user.userId;
+
+//     if (!query) {
+//       return res.status(400).json({ msg: "Query cannot be empty" });
+//     }
+
+//     let fileData = null;
+//     let processedFile = null;
+//     let counter = false;
+
+//     if (req.file) {
+//       try {
+//         counter = true;
+//         processedFile = await processUploadedFile(req.file);
+
+//         fileData = {
+//           filename: req.file.filename,
+//           filetype: req.file.mimetype,
+//           fileSize: (req.file.size / 1048576).toFixed(2),
+//           filedownloadUrl: `uploads/userChatUpload/${req.file.filename}`,
+//           processedContent: processedFile.content
+//         };
+
+//         console.log("File processed successfully:", processedFile);
+//       } catch (error) {
+//         console.error("File processing error:", error);
+//         return res.status(400).json({ msg: "Error processing uploaded file" });
+//       }
+//     } else {
+//       counter = false;
+//     }
+
+//     let conversation = conversationId
+//       ? await ChatHistory.findOne({ _id: conversationId, userId })
+//       : new ChatHistory({ userId, conversation: [], chunksUsed: [], summary: "" });
+
+//     if (conversationId && !conversation) {
+//       return res.status(404).json({ msg: "Conversation not found" });
+//     }
+
+//     const bot = await Bot.findById(conversation.botId).populate("documents");
+//     if (!bot) {
+//       return res.status(404).json({ msg: "Bot not found" });
+//     }
+
+//     conversation.conversation.push({
+//       role: "user",
+//       text: query,
+//       fileTextContent: processedFile?.type === 'pdf' ? processedFile.content : null,
+//       file: fileData
+//     });
+
+//     // FAKE AI RESPONSE
+//     const fakeAiResponse = `### 🤖 AI Response  
+// ✅ **Key Information:** This is a sample response.  
+// 📌 **Your Query:** "${query}"  
+// 📚 **Possible Explanation:**  
+// - AI is currently unavailable, so this is a placeholder response.  
+// - The real AI would analyze legal documents and provide structured feedback.  
+// - Please try again later for a more detailed answer.`;
+
+//     conversation.conversation.push({
+//       role: "bot",
+//       text: fakeAiResponse
+//     });
+
+//     await conversation.save();
+
+//     return res.json({
+//       conversationId: conversation._id,
+//       conversation: conversation.conversation
+//     });
+
+//   } catch (error) {
+//     console.error("Error in /ask-ai:", error.message);
+//     return res.status(500).json({
+//       msg: "Server error in AI communication",
+//       error: error
+//     });
+//   }
+// });
 
 router.get("/history", authMiddleware, async (req, res) => {
   try {

@@ -8,6 +8,7 @@ import 'vue-toastification/dist/index.css';
 
 import App from './App.vue'
 import router from './router'
+import './registerServiceWorker'
 
 const app = createApp(App)
 
