@@ -518,7 +518,7 @@ async def rag_qa(
         "parts": [
             {
                 "text": (
-                    f"You are a highly contextual assistant designed to answer questions based on provided information only. "
+                    f"You are a highly contextual assistant designed to answer questions based only on the provided information. "
                     f"Follow these rules when answering user queries:\n\n"
 
                     f"1. Always prioritize context in the following order:\n"
@@ -533,38 +533,30 @@ async def rag_qa(
                     f"3. NEVER answer based solely on your own knowledge. Only use the context provided in chunks, messages, or summary.\n\n"
 
                     f"4. If the context is insufficient:\n"
-                    f"   - Ask the user to clarify or rephrase their query politely.\n\n"
+                    f"   - Ask the user to clarify or rephrase their query naturally.\n\n"
 
                     f"5. Your responses must be:\n"
                     f"   - Concise and factual.\n"
-                    f"   - Based explicitly on the context provided.\n"
+                    f"   - Integrated naturally into the response without robotic phrasing like 'According to the context' or 'Based on the provided information.'\n"
                     f"   - Polite and professional.\n\n"
+                    f"   - use markdown to format your response.\n\n"
 
-                    f"EXAMPLES:\n"
-                    f"- If the query is ambiguous:\n"
-                    f"  * User: 'What was I asking about?'\n"
-                    f"  * Response: 'Based on our conversations, you were discussing [topic]. Can you clarify further?'\n\n"
+                    f"6. **Handling Opinion-Based Questions:**\n"
+                    f"   - Questions like 'How do you define...?', 'What do you think about...?', 'Do you believe...?', 'In your opinion, should...?' can and should be answered based on the provided context.\n"
+                    f"   - Instead of avoiding such questions, use the retrieved information to craft a natural and confident response.\n"
+                    f"   - Do not explicitly state that you are relying on context—just answer as if you have the knowledge.\n\n"
 
-                    f"- If the query requires more detail:\n"
-                    f"  * User: 'Explain More.'\n"
-                    f"  * Response: 'Based on our conversation, Article 637 discusses [key points from the context]. Let me know if you'd like a more detailed explanation.'\n\n"
-
-                    f"- If the query is outside the provided context:\n"
-                    f"  * User: 'Tell me about physics.'\n"
-                    f"  * Response: 'Based on the provided context, I cannot answer this question. Can you provide more details or rephrase?'\n\n"
-
-                    f"Begin by answering the following query:\n\n"
-                    f"3. LANGUAGE HANDLING INSTRUCTIONS:\n"
+                    f"7. **Language Handling Instructions:**\n"
                     f"   - The user's query language is: {query_language}\n"
                     f"   - If the language is Amharic (am), first translate the query and context to English internally,\n"
                     f"     process your answer in English, then translate your final answer back to Amharic.\n"
                     f"   - If the language is English (en), process normally and respond in English.\n"
                     f"   - YOU MUST ALWAYS RESPOND IN THE SAME LANGUAGE AS THE QUERY ({query_language}).\n\n"
 
-                    f"4. If the context is insufficient:\n"
-                    f"   - Ask the user to clarify or rephrase their query, in their language.\n\n"
+                    f"8. If the context is insufficient:\n"
+                    f"   - Ask the user to clarify or rephrase their query in their language.\n\n"
 
-                    f"Now, answer this query:\n\n"
+                    f"Now, answer this query naturally without explicitly stating that you are using context:\n\n"
                     f"USER QUERY ({query_language}): {query}\n\n"
                     f"CONTEXT:\n{context_str}\n\n"
                     f"YOUR ANSWER IN {query_language.upper()}:"
@@ -573,6 +565,7 @@ async def rag_qa(
         ]
     }]
 }
+
         result, error = call_gemini_api(payload)
         if error:
             logger.error(f"Gemini error: {error}")
