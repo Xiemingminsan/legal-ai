@@ -570,22 +570,13 @@ router.post("/deleteChat", authMiddleware, async (req, res) => {
     }
 
     // Check if conversation is empty (no messages)
-    if (!conversation.conversation || conversation.conversation.length === 0) {
       // Delete the conversation
       await ChatHistory.findByIdAndDelete(conversationId);
       return res.status(200).json({ 
         msg: "Empty conversation deleted successfully",
         deleted: true
       });
-    }
-
-    // If conversation has messages, return appropriate response
-    return res.status(400).json({ 
-      msg: "Conversation contains messages and cannot be deleted",
-      deleted: false
-    });
-
-  } catch (error) {
+    } catch (error) {
     console.error("Error deleting conversation:", error);
     return res.status(500).json({ 
       msg: "Server error deleting conversation",

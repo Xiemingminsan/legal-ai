@@ -509,14 +509,9 @@ async def rag_qa(
 
         context_texts = [context] + [f"Chunk from doc {c['doc_id']}:\n{c['text']}" for c in chunks]
         context_str = "\n\n".join(context_texts)
-        index = 0
-        amharic = ""
-
-                
-        if language != "en":
-            index = 1
-            query = await translate_to_english(query)
-            print("translated_query",query)
+        print("lang", language)
+        query_language = language
+        print("query_language",query_language)
 
         payload = {
     "contents": [{
@@ -559,18 +554,20 @@ async def rag_qa(
                     f"  * Response: 'Based on the provided context, I cannot answer this question. Can you provide more details or rephrase?'\n\n"
 
                     f"Begin by answering the following query:\n\n"
-                    f"""
-                    **Step 1: Language Check**
-                    - Check if the context below has Amharic. If yes, translate it to English.
+                    f"3. LANGUAGE HANDLING INSTRUCTIONS:\n"
+                    f"   - The user's query language is: {query_language}\n"
+                    f"   - If the language is Amharic (am), first translate the query and context to English internally,\n"
+                    f"     process your answer in English, then translate your final answer back to Amharic.\n"
+                    f"   - If the language is English (en), process normally and respond in English.\n"
+                    f"   - YOU MUST ALWAYS RESPOND IN THE SAME LANGUAGE AS THE QUERY ({query_language}).\n\n"
 
-                    **Context to Analyze:**
-                    {context_str}
+                    f"4. If the context is insufficient:\n"
+                    f"   - Ask the user to clarify or rephrase their query, in their language.\n\n"
 
-                    **Step 2: Translation (if needed)**
-                    - If you translated the context, use the English version for answering.
-                    \n\n"""
-                    f"User question: {query}\n\n"
-                    f"Answer:"
+                    f"Now, answer this query:\n\n"
+                    f"USER QUERY ({query_language}): {query}\n\n"
+                    f"CONTEXT:\n{context_str}\n\n"
+                    f"YOUR ANSWER IN {query_language.upper()}:"
                 )
             }
         ]
@@ -580,9 +577,6 @@ async def rag_qa(
         if error:
             logger.error(f"Gemini error: {error}")
             return {"answer": error, "chunksUsed": chunks}
-        
-        if index == 1:
-            result["answer"] = translate_english_to_amharic(result["answer"])
 
         return {
             "answer": result["answer"],
