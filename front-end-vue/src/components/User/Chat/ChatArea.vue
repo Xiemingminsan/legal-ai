@@ -265,8 +265,7 @@ const askAi = async () => {
       class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 md:mb-0 shadow-lg rounded-lg">
       <div class="flex items-center gap-3">
         <!-- Language toogle -->
-        <button
-          @click="toggleLanguage"
+        <button type="button" @click="toggleLanguage"
           class="px-3 py-2 w-[50px] rounded-lg border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:bg-gray-700 dark:text-gray-200 transition duration-200 ease-in-out"
           aria-label="Toggle Language">
           {{ selectedLanguage === 'en' ? 'En' : 'አማ' }}
