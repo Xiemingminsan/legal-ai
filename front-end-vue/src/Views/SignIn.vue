@@ -1,11 +1,13 @@
 <template>
   <div
     class="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-900 dark:to-gray-700">
-    <div class="absolute top-0 w-full">
+    <div class="absolute top-0 w-full z-10" >
       <NavBarLandingPage :hideNavLinks="true" />
     </div>
 
-    <div class="bg-white dark:bg-gray-800 shadow-xl rounded-lg p-8 max-w-md w-full">
+    <PulseBg />
+
+    <div class="bg-white dark:bg-gray-800 shadow-xl rounded-lg p-8 max-w-md w-full z-10">
       <div class="flex justify-center mb-8">
         <img src="/logo.png" alt="Legal Bot Ethio AI Logo" class="h-20">
       </div>
@@ -62,6 +64,7 @@ import NavBarLandingPage from '@/components/LandingPage/NavBarLandingPage.vue';
 import { useAuthStore } from '@/stores/authStore';
 import { useRouter } from 'vue-router';
 import { MyToast } from '@/utils/toast';
+import PulseBg from '@/components/Basics/PulseBg.vue';
 
 const router = useRouter();
 const authStore = useAuthStore();

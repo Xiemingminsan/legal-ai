@@ -20,7 +20,7 @@
             {{ slides[currentSlide].description }}
           </p>
           <div class="mt-10">
-            <a href="#" class="px-8 py-3 text-lg font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">Get
+            <a href="/signup" class="px-8 py-3 text-lg font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">Get
               Started</a>
           </div>
         </div>
@@ -129,21 +129,21 @@ const slides = [
     id: 1,
     title: "Welcome to Legal Bot Ethio AI",
     description: "Revolutionizing legal advice with cutting-edge AI technology",
-    image: "https://via.assets.so/game.png?id=12&q=98&w=1920&h=1080",
+    image: "/slide1.jpg",
     alt: "AI-powered legal advice"
   },
   {
     id: 2,
     title: "Get Expert Legal Advice Instantly",
     description: "Our AI system provides accurate and timely legal guidance",
-    image: "https://via.assets.so/game.png?id=13&q=98&w=1920&h=1080",
+    image: "/slide2.jpg",
     alt: "Instant legal advice"
   },
   {
     id: 3,
     title: "Empowering Ethiopian Citizens",
     description: "Making legal information accessible to everyone",
-    image: "https://via.assets.so/game.png?id=14&q=98&w=1920&h=1080",
+    image: "/slide3.jpg",
     alt: "Empowering citizens"
   }
 ];
@@ -171,20 +171,20 @@ const developers = ref([
   {
     name: 'nedia ',
     avatar: '/neda.png',
-    github: 'developer1',
-    telegram: 'developer1'
+    github: 'nedahashim',
+    telegram: 'Ailurophilie'
   },
   {
     name: 'yosf ',
     avatar: '/yosef.png',
-    github: 'developer2',
-    telegram: 'developer2'
+    github: 'Xiemingminsan',
+    telegram: 'demi_dieux'
   },
   {
     name: 'agi ',
     avatar: '/agi.png',
-    github: 'developer3',
-    telegram: 'developer3'
+    github: 'ajkel9',
+    telegram: 'ajkel9'
   },
   {
     name: 'Surafel',
