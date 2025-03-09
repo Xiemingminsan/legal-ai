@@ -3,10 +3,10 @@
   <div v-if="isLoading" class="flex justify-center items-center min-h-screen">
     <LoadingSpinner />
   </div>
-  
+
   <!-- Error state -->
   <ErrorRetryComp v-else-if="error" :errorMessage="error" :onRetry="getExploreBots" />
-  
+
   <!-- Page content -->
   <div v-else class="min-h-screen bg-gray-50 dark:bg-gray-900 px-4 py-8 sm:px-6 lg:px-8">
     <div class="max-w-7xl mx-auto">
@@ -16,30 +16,64 @@
           <i class="ri-robot-line text-blue-500 animate-pulse"></i>
         </h1>
       </header>
-      
-      <section class="mb-16">
-        <h2 class="text-2xl font- text-gray-800 dark:text-gray-200 mb-6">Primary Bots</h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          <ExploreBotCard v-for="bot in primaryBots" :key="bot._id" :bot="bot" />
-        </div>
-      </section>
-      
-      <section class="mb-16">
-        <h2 class="text-2xl font- text-gray-800 dark:text-gray-200 mb-6">Public Bots</h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          <ExploreBotCard v-for="bot in userBots" :key="bot._id" :bot="bot" :showWarningLabel="true" />
-        </div>
-      </section>
-      
-      <section>
-        <div class="flex items-center justify-between mb-6">
-          <h2 class="text-2xl font- text-gray-800 dark:text-gray-200">Private Bots</h2>
-          <BuyPremiumBtn />
-        </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          <ExploreBotCard v-for="bot in myBots" :key="bot._id" :bot="bot" />
-        </div>
-      </section>
+
+      <div class="space-y-16 py-6">
+        <!-- Primary Bots Section -->
+        <section>
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-1">Primary Bots</h2>
+              <p class="text-sm text-gray-600 dark:text-gray-400">Official bots Managed by Et Legal Bot</p>
+            </div>
+          </div>
+
+          <!-- Responsive grid with better mobile spacing -->
+          <div class="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+            <ExploreBotCard v-for="bot in primaryBots" :key="bot._id" :bot="bot" />
+          </div>
+        </section>
+
+        <!-- Public Bots Section -->
+        <section>
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-1">Public Bots</h2>
+              <p class="text-sm text-gray-600 dark:text-gray-400">Community-created bots available to everyone</p>
+            </div>
+
+          </div>
+
+          <div class="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+            <ExploreBotCard v-for="bot in userBots" :key="bot._id" :bot="bot" :showWarningLabel="true" />
+          </div>
+        </section>
+
+        <!-- Private Bots Section -->
+        <section>
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-1">Private Bots</h2>
+              <p class="text-sm text-gray-600 dark:text-gray-400">Your personal collection of AI assistants</p>
+            </div>
+            <BuyPremiumBtn />
+          </div>
+
+          <div class="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+            <ExploreBotCard v-for="bot in myBots" :key="bot._id" :bot="bot" />
+          </div>
+
+          <!-- Empty state for when no private bots exist -->
+          <div v-if="myBots.length === 0"
+            class="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-8 text-center border border-dashed border-gray-300 dark:border-gray-700">
+            <div class="flex justify-center mb-4">
+              <i class="ri-robot-line text-4xl text-gray-400"></i>
+            </div>
+            <h3 class="text-lg font-medium text-gray-800 dark:text-gray-200 mb-2">No private bots yet</h3>
+            <p class="text-gray-600 dark:text-gray-400 mb-4 max-w-md mx-auto">Create your own custom AI assistant to
+              help with specific tasks or knowledge domains.</p>
+          </div>
+        </section>
+      </div>
     </div>
   </div>
 </template>
