@@ -244,6 +244,8 @@ router.get("/getDashboardData", async (req, res) => {
     // Total documents uploaded count
     const totalDocuments = await Document.countDocuments();
 
+    const totalContracts = await Contract.countDocuments();
+
     // Total Bots count
     const totalBots = await Bot.countDocuments();
 
@@ -319,6 +321,7 @@ router.get("/getDashboardData", async (req, res) => {
         totalUsers,
         totalDocuments,
         totalBots,
+        totalContracts,
       },
       uploadsLast60Days,
       recentSignups,

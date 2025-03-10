@@ -196,21 +196,22 @@ const developers = ref([
 
 const services = ref([
   {
-    title: 'Legal Research',
-    description: 'AI-powered legal research to find relevant cases and statutes.',
+    title: 'AI Legal Advice',
+    description: 'Get legal advice from our AI-powered chatbot, trained on Ethiopian legal documents.',
     icon: BookOpenIcon
   },
   {
-    title: 'Case Analysis',
-    description: 'In-depth analysis of legal cases using advanced AI algorithms.',
+    title: 'Custom Bot Creation',
+    description: 'Create your own personalized legal chatbot with custom documents and interact with it.',
     icon: ScaleIcon
   },
   {
-    title: 'Legal Consultation',
-    description: 'Get instant legal advice from our AI-powered chatbot.',
+    title: 'Case Analysis',
+    description: 'In-depth analysis of legal cases using advanced AI RAG Models.',
     icon: MessageCircleIcon
   }
 ])
+
 
 const termsOfService = ref([
   'Users must be at least 18 years old to use the service.',

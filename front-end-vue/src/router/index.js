@@ -3,7 +3,6 @@ import { useAuthStore } from '@/stores/authStore'
 import UserBaseLayout from '@/Views/UserBaseLayout.vue'
 import MyAccount from '@/Views/Users/MyAccount.vue'
 
-import Home from '@/Views/Users/Home.vue'
 import Explore from '@/Views/Users/Explore.vue'
 import RecentChatsBar from '@/components/User/Chat/RecentChatsBar.vue'
 import LandingPage from '@/Views/LandingPage.vue'
@@ -31,7 +30,6 @@ const router = createRouter({
       path: '/',
       component: UserBaseLayout,
       children: [
-        { path: 'home', component: Home },
         { path: 'myaccount', component: MyAccount },
         { path: 'createBot', component: CreateBotUser },
         { path: 'explore', component: Explore },
@@ -80,7 +78,7 @@ router.beforeEach((to, from) => {
 
   // Handle public routes
   if (publicPaths.includes(to.path)) {
-    return authStore.token ? '/home' : true
+    return authStore.token ? '/chats' : true
   }
 
   // Check authentication for non-public routes
@@ -91,7 +89,7 @@ router.beforeEach((to, from) => {
   // Restrict admin routes to admins only
   if (adminRoutes.some((route) => to.path.startsWith(route))) {
     if (authStore.role !== 'admin') {
-      return '/home'
+      return '/chats'
     }
   }
 
