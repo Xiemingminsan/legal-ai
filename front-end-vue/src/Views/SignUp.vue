@@ -211,7 +211,7 @@ const handleSignUp = async () => {
   }
 
   router.push('/signin'); // Redirect to the homepage on success
-  MyToast.success("Account Created!");
+  MyToast.success(response.msg);
 };
 
 

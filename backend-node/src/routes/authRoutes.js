@@ -5,7 +5,8 @@ const authMiddleware = require("../middlewares/authMiddleware");
 const User = require("../models/User");
 const axios = require("axios")
 const router = express.Router();
-const Resend = require('resend')
+const nodemailer = require('nodemailer');
+
 // Function to generate a random 6-character password
 function generateRandomPassword(length = 6) {
   const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -17,32 +18,38 @@ function generateRandomPassword(length = 6) {
 }
 
 
-
 async function sendPasswordEmail(toEmail, password) {
-  const API_URL = 'https://api.resend.com/emails';
-  const API_KEY = 're_GnxX49po_K7X8LMTW51uEpuZystTSYsne'; // Replace with a secure way to store this
+  const My_EMAIL = 'ET-legal-bot@mailslurp.biz';
+
+  // Configure the mail transporter
+  const transport = nodemailer.createTransport({
+      host: 'mxslurp.click',
+      port: 2525,
+      secure: false,
+      auth: {
+          user: My_EMAIL,
+          pass: 'JpggBpfC62qhI6d6UiEMlyJJ8pSNPtgc' // Consider storing this securely
+      }
+  });
+
+  // Define email options
+  const mailOptions = {
+      from: My_EMAIL,
+      to: toEmail,
+      subject: 'Your New Password',
+      html: `<p>Your new password is: <strong>${password}</strong></p>`
+  };
 
   try {
-      const response = await axios.post(API_URL, {
-          from: 'onboarding@resend.dev',
-          to: toEmail,
-          subject: 'Your New Password',
-          html: `<p>Your new password is: <strong>${password}</strong></p>`
-      }, {
-          headers: {
-              'Authorization': `Bearer ${API_KEY}`,
-              'Content-Type': 'application/json'
-          }
-      });
-      
-      console.log('Email sent successfully:', response.data);
-      return response.data;
+      // Send email
+      let info = await transport.sendMail(mailOptions);
+      console.log('Email sent successfully:', info.response);
+      return info;
   } catch (error) {
-      console.error('Error sending email:', error.response ? error.response.data : error.message);
+      console.error('Error sending email:', error.message);
       throw new Error('Failed to send email');
   }
 }
-
 
 
 // POST /api/auth/signup
@@ -87,11 +94,19 @@ router.post("/signup", async (req, res) => {
     // Generate a random 6-character password
     const password = generateRandomPassword();
 
+    // Send the password to the user's email first
+    try {
+      await sendPasswordEmail(email, password);
+    } catch (emailError) {
+      console.error("Error sending email:", emailError);
+      return res.status(500).json({ msg: "Failed to send password email. Try again later." });
+    }
+
     // Hash password
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
-    // Create new user
+    // Create and save new user
     const newUser = new User({
       username,
       email,
@@ -101,17 +116,16 @@ router.post("/signup", async (req, res) => {
       legalTerminologyComfort,
       fullname,
     });
+
     await newUser.save();
 
-    // Send the password to the user's email
-    await sendPasswordEmail(email, password);
-
-    res.status(201).json({ msg: "User registered successfully. Check your email for the password." });
+    res.status(201).json({ msg: "User registered successfully. Check your email for the temporary password." });
   } catch (err) {
     console.error("Error during signup:", err);
     res.status(500).json({ msg: "Server error" });
   }
 });
+
 
 // POST /api/auth/login
 router.post("/login", async (req, res) => {
