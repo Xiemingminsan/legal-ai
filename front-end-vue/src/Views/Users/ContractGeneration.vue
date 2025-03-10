@@ -290,10 +290,11 @@ const contractPreviewCss = `
 
       #ContractPreview .contractTextArea {
         width: 100%;
+        height: fit-content;
         padding: 0.5rem 1rem; /* px-3 py-2 */
         border-radius: 0.375rem; /* rounded-md */
         border: 1px solid #4b556366; /* dark:border-gray-600 */
-        color: #fff; /* text color */
+        color: #fff important!; /* text color */
         margin-bottom: 1rem; /* mb-4 */
       }
 
