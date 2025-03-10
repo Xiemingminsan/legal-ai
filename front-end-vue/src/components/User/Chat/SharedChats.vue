@@ -21,6 +21,9 @@ const sharedConversationId = ref(null);
 import { useRoute } from 'vue-router';
 import { setNavBarShowState } from '@/utils/Utils';
 import LoadingSpinner from '@/components/Basics/LoadingSpinner.vue';
+import { useLanguageStore } from '@/stores/languageStore';
+
+const { t } = useLanguageStore(); // Translation function
 
 const route = useRoute();
 
@@ -86,7 +89,7 @@ onUnmounted(() => {
 
       <!-- Right: Info icon -->
       <i class="ri-information-line text-2xl text-gray-500 dark:text-gray-300"
-        title="Using AI for legal matters in Ethiopia cannot guarantee 100% accuracy or reliability due to the complexities and nuances of local laws and regulations."></i>
+         :title="t('legalAIDisclaimer')"></i>
     </div>
 
     <div class="flex-grow overflow-y-scroll  scrollable-div" ref="messagesContainer">
@@ -101,7 +104,7 @@ onUnmounted(() => {
       <!-- Sucess State -->
       <div v-else>
         <div v-if="conversation.length === 0" class="flex justify-center items-center  mb-10 h-[80%] mt-32">
-          <p class="text-gray-500 dark:text-gray-400">Start chatting by typing a message below.</p>
+          <p class="text-gray-500 dark:text-gray-400">{{ t('startChatting') }}</p>
         </div>
         <div v-else v-for="message in conversation" :key="message._id" class="p-4 space-y-4">
           <MessageBubble :message="message" />

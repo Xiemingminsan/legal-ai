@@ -1,12 +1,12 @@
 <template>
   <div class="h-full overflow-y-auto">
     <h2 class="text-2xl font-bold p-4 text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
-      Chats
+      {{t('chats')}}
     </h2>
     <ul>
       <div v-if="chats.length === 0" class="p-4 text-center text-gray-500 dark:text-gray-400 mt-20">
-        No chats available.
-      </div>
+        {{ t('noChatsAvailable') }}
+            </div>
       <div v-else>
         <li v-for="chat in chats" :key="chat._id"
           class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors duration-150 group"
@@ -59,6 +59,9 @@ import { defineProps, defineEmits } from 'vue';
 import { useUserStore } from '@/stores/userStore';
 import { MyToast } from '@/utils/toast';
 import MyHttpService from '@/stores/MyHttpService';
+import { useLanguageStore } from '@/stores/languageStore';
+
+const { t } = useLanguageStore(); // Translation function
 
 
 const userStore = useUserStore();

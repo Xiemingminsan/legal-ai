@@ -12,7 +12,7 @@
     <div class="max-w-7xl mx-auto">
       <header class="mb-12">
         <h1 class="text-4xl text-gray-900 dark:text-white flex items-center justify-between">
-          Explore Bots
+          {{ t('explore_bots') }}
           <i class="ri-robot-line text-blue-500 animate-pulse"></i>
         </h1>
       </header>
@@ -22,8 +22,8 @@
         <section>
           <div class="flex items-center justify-between mb-6">
             <div>
-              <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-1">Primary Bots</h2>
-              <p class="text-sm text-gray-600 dark:text-gray-400">Official bots Managed by Et Legal Bot</p>
+              <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-1">{{ t('primary_bots') }}</h2>
+              <p class="text-sm text-gray-600 dark:text-gray-400">{{ t('offical_bots')}}</p>
             </div>
           </div>
 
@@ -37,8 +37,8 @@
         <section>
           <div class="flex items-center justify-between mb-6">
             <div>
-              <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-1">Public Bots</h2>
-              <p class="text-sm text-gray-600 dark:text-gray-400">Community-created bots available to everyone</p>
+              <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-1">{{ t('public_bots') }}</h2>
+              <p class="text-sm text-gray-600 dark:text-gray-400">{{ t('comunity_bots') }}</p>
             </div>
 
           </div>
@@ -52,8 +52,8 @@
         <section>
           <div class="flex items-center justify-between mb-6">
             <div>
-              <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-1">Private Bots</h2>
-              <p class="text-sm text-gray-600 dark:text-gray-400">Your personal collection of AI assistants</p>
+              <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-1">{{ t('private_bots') }}</h2>
+              <p class="text-sm text-gray-600 dark:text-gray-400">{{ t('private_bots_text')}}</p>
             </div>
             <BuyPremiumBtn />
           </div>
@@ -68,9 +68,8 @@
             <div class="flex justify-center mb-4">
               <i class="ri-robot-line text-4xl text-gray-400"></i>
             </div>
-            <h3 class="text-lg font-medium text-gray-800 dark:text-gray-200 mb-2">No private bots yet</h3>
-            <p class="text-gray-600 dark:text-gray-400 mb-4 max-w-md mx-auto">Create your own custom AI assistant to
-              help with specific tasks or knowledge domains.</p>
+            <h3 class="text-lg font-medium text-gray-800 dark:text-gray-200 mb-2">{{ t('no_private_avail') }}</h3>
+            <p class="text-gray-600 dark:text-gray-400 mb-4 max-w-md mx-auto">{{ t('no_private_long_text') }}</p>
           </div>
         </section>
       </div>
@@ -87,6 +86,10 @@ import { MyToast } from '@/utils/toast';
 import ErrorRetryComp from '@/components/Basics/ErrorRetryComp.vue';
 import BuyPremiumBtn from '@/components/User/BuyPremiumBtn.vue';
 import LoadingSpinner from '@/components/Basics/LoadingSpinner.vue';
+import { useLanguageStore } from '@/stores/languageStore';
+
+const { t } = useLanguageStore(); // Translation function
+
 
 const userStore = useUserStore();
 const authStore = useAuthStore();

@@ -14,7 +14,7 @@
           <i class="ri-information-line text-yellow-600 dark:text-yellow-400 text-lg"></i>
         </div>
         <div class="absolute top-full right-0 mt-2 w-64 px-4 py-3 bg-gray-800 text-white text-sm rounded-lg shadow-xl opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 z-20 border border-gray-700">
-          <p>This is a user-generated bot. It may rely on less reliable data to operate. Use with caution.</p>
+          <p>{{ t('userGeneratedBotWarning') }}          </p>
           <div class="absolute -top-2 right-3 w-4 h-4 bg-gray-800 border-t border-l border-gray-700 transform rotate-45"></div>
         </div>
       </div>
@@ -35,7 +35,7 @@
         class="absolute bottom-4 right-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-lg transform translate-y-8 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 flex items-center gap-2"
       >
         <i class="ri-chat-3-line"></i>
-        <span>Chat Now</span>
+        <span>{{ t('chatNow') }}</span>
       </button>
     </div>
 
@@ -69,7 +69,7 @@
           @click.stop="onBotClicked"
           class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium flex items-center gap-1"
         >
-          <span>Try it</span>
+          <span>{{ t('tryIt') }}</span>
           <i class="ri-arrow-right-line"></i>
         </button>
       </div>
@@ -82,6 +82,9 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useUserStore } from '@/stores/userStore';
 import { MyToast } from '@/utils/toast';
+import { useLanguageStore } from '@/stores/languageStore';
+
+const { t } = useLanguageStore(); // Translation function
 
 const router = useRouter();
 const userStore = useUserStore();

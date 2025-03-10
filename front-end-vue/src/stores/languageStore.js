@@ -93,9 +93,83 @@ const translations = {
     en: 'Processing...',
     am: 'እየገባ ነው...',
   },
+  close: {
+    en: 'Close',
+    am: 'ዝጋ',
+  },
+  proceed: {
+    en: 'Proceed',
+    am: 'ቀጥል',
+  },
+  userGeneratedBotWarning: {
+    en: 'This is a user-generated bot. It may rely on less reliable data to operate. Use with caution.',
+    am: 'ይህ በተጠቃሚ የተፈጥረ ቦት ነው። ሊስተምም በታመን ውሂብ ላይ ሊተመን ይችላል። በጥንቃቄ ተጠቀም።',
+  },
+  chatNow: {
+    en: 'Chat Now',
+    am: 'አሁን እንቅስቃሴ ተናጋሪ',
+  },
+  tryIt: {
+    en: 'Try it',
+    am: 'ይሞክሩ',
+  }
+  ,
   invalid_email: {
     en: 'Invalid email',
     am: 'ኢሜይል የተሳሳተ ነው',
+  },
+
+  myAccount: {
+    en: 'My Account',
+    am: 'የኔ ምንባብ',
+  },
+  accountType: {
+    en: 'Account Type',
+    am: 'የመለያ አይነት',
+  },
+  premiumUpgradeAvailable: {
+    en: 'Premium Upgrade Available!',
+    am: 'ፕሪሚየም ማሻሻያ እንደምትገኝ!',
+  },
+  unlockAdvancedFeatures: {
+    en: 'Unlock advanced features and improve your experience.',
+    am: 'የምትገኙ አስተዳደራዊ ባለሞያ ባህሪዎችን ክፈቱ እና ተሞክሮዎትን ማሻሻል ያሳሰቡት።',
+  },
+  currentPassword: {
+    en: 'Current Password',
+    am: 'አሁን ያለው ማስተከል',
+  },
+  newPassword: {
+    en: 'New Password',
+    am: 'አዲስ የፓስወርድ',
+  },
+  confirmNewPassword: {
+    en: 'Confirm New Password',
+    am: 'አዲስ ፓስወርድ ያረጋግጡ',
+  },
+  changePassword: {
+    en: 'Change Password',
+    am: 'ፓስወርድ ለውጥ',
+  },
+  paymentHistory: {
+    en: 'Payment History',
+    am: 'የክፍያ ታሪክ',
+  },
+  month: {
+    en: 'Month',
+    am: 'ወር',
+  },
+  settings: {
+    en: 'Settings',
+    am: 'ቅንብሮች',
+  },
+  changeLanguage: {
+    en: 'Change Language',
+    am: 'ቋንቋ ለውጥ',
+  },
+  changeTheme: {
+    en: 'Change Theme',
+    am: 'ቲም ለውጥ',
   },
   next: {
     en: 'Next',
@@ -108,6 +182,10 @@ const translations = {
   submit: {
     en: 'Submit',
     am: 'አስገባ',
+  },
+  deleteAccount: {
+    en: 'Delete Account',
+    am: 'መለያን ይሰርዙ',
   },
   step: {
     en: 'Step',
@@ -151,15 +229,126 @@ const translations = {
   },
   explore: {
     en: 'Explore',
-    am: 'አሳሽ ገጽ',
+    am: 'ያስሱ',
   },
   createBot: {
     en: 'Create Bot',
-    am: 'ፖስት ይፍጠሩ',
+    am: 'ቦት ፍጠር',
   },
+  legalAIDisclaimer: {
+    en: 'Using AI for legal matters in Ethiopia cannot guarantee 100% accuracy or reliability due to the complexities and nuances of local laws and regulations.',
+    am: 'በኢትዮጵያ ላይ ለሕጋዊ ጉዳዮች አይአይ መጠቀም የአካባቢውን ሕጎች እና ደንቦች በዝርዝርነት እና በተወሰነ ሁኔታ ስላልተከበበ በመሆኑ መተንሰርና ስርዓት የሞላ እውነተኛነትን ማስረጃ ማድረግ አይቻልም።',
+  },
+  
+  chats: {
+    en: 'Chats',
+    am: 'ቻቶች',
+  },
+  contracts: {
+    en: 'Contracts',
+    am: 'ኮንትራቶች',
+  },
+  explore_bots: {
+    en: 'Explore Bots',
+    am: 'ቦቶችን ያስሱ',
+  },
+
+  primary_bots: {
+    en: 'Primary Bots',
+    am: 'ዋና ቦቶች',
+  },
+
+  offical_bots: {
+    en: 'Official bots Managed by Et Legal Bot',
+    am: 'በኢት Legal Bot የሚተዳደሩ ኦፊሴላዊ ቦቶች',
+  },
+
+  deleteAccountConfirmation: {
+    en: 'Are you sure you want to delete this Account?',
+    am: 'እባኮት ይህን መለያ ማስወገድ ትፈልጋለህ?',
+  },
+  cancel: {
+    en: 'Cancel',
+    am: 'ሰርዝ',
+  },
+  delete: {
+    en: 'Delete',
+    am: 'ሰርዝ',
+  }
+  ,
+  public_bots: {
+    en: 'Public Bots',
+    am: 'የህዝብ ቦቶች',
+  },
+  comunity_bots: {
+    en: 'Community-created bots available to everyone',
+    am: 'በማህበረሰብ የተፈጠሩ ቦቶች ለሁሉም ይገኛሉ',
+  },
+
+  private_bots: {
+    en: 'Private Bots',
+    am: 'የግል ቦቶች',
+  },
+
+  private_bots_text: {
+    en: 'Your personal collection of AI assistants',
+    am: 'የእርስዎ የግል የ AI ረዳቶች ስብስብ',
+  },
+  no_private_avail: {
+    en: 'No private bots yet',
+    am: 'እስካሁን ምንም የግል ቦቶች የሉም',
+  },
+  no_private_long_text: {
+    en: 'Create your own custom AI assistant to help with specific tasks or knowledge domains.',
+    am: 'የራስዎን ብጁ AI ረዳት ይፍጠሩ በተወሰኑ ተግባራት ወይም የእውቀት ጎራዎች እገዛ',
+  },
+
+  upgrade_to_pre: {
+    en: 'Upgrade to Premium',
+    am: 'ወደ ፕሪሚየም ያሻሽሉ።',
+  },
+  premium: {
+    en: 'Premium',
+    am: 'ፕሪሚየም',
+  },
+  get_all_prem: {
+    en: 'Get access to all premium features.',
+    am: 'ሁሉንም የፕሪሚየም ባህሪያት መዳረሻ ያግኙ።',
+  },
+
+  birr_month: {
+    en: 'Birr / Month',
+    am: 'ብር / ወር',
+  },
+  premium_features: {
+    en: 'Premium Features:',
+    am: 'የፕሪሚየም ባህሪዎች',
+  },
+
   message: {
     en: 'Messages',
     am: 'መልክት',
+  },
+
+  unlimitedLegalDocs: {
+    en: 'Unlimited legal document generation',
+    am: 'ያልተገደበ ሕጋዊ ሰነዶች ምርት',
+  },
+  prioritySupport: {
+    en: 'Priority customer support',
+    am: 'አማካይ ደንበኛ ድጋፍ',
+  },
+  accessToPremiumTemplates: {
+    en: 'Access to premium legal templates',
+    am: 'ወላጅ ሕጋዊ ተአምራቾች ተይዟል',
+  },
+  advancedLegalAnalysis: {
+    en: 'Advanced AI-powered legal analysis',
+    am: 'ልምድ በማስተናገድ በአስተዳደር ሕጋዊ ትንታኔ',
+  },
+  customizableStorage: {
+    en: 'Customizable legal document storage',
+    am: 'እቅድ ማስተናገድ ሕጋዊ ሰነዶች አንቀጽ',
   },
   account: {
     en: 'Account',
@@ -241,10 +430,40 @@ const translations = {
     en: 'Theme',
     am: 'ትም',
   },
-  delete: {
-    en: 'Delete Account',
-    am: 'ሰርዝ መለያ',
+
+  unlockPremiumFeatures: {
+    en: 'Unlock Premium Features',
+    am: 'የፕሪሚየም ዝግጅቶችን ክፈት',
   },
+  upgradeToPro: {
+    en: 'Upgrade to a Pro account to create and manage your own bots. Enjoy exclusive features and take your experience to the next level!',
+    am: 'የራስዎን ቦቶች ለመፍጠር እና ለማስተዳደር ወደ ፕሮ መለያ ያድሱ። ልዩ ባህሪዎችን ይጠቀሙ እና ተሞክሮዎን ወደ ሌላ ደረጃ ያድርጉ!',
+  },
+  proAccountBenefit: {
+    en: 'With a Pro account, you can create a customized bot for your own personal use!',
+    am: 'በፕሮ መለያ የራስዎን አገልግሎት የሚያገለግል ቦት መፍጠር ይችላሉ!',
+  },
+  contractGenerator: {
+    en: 'Contract Generator',
+    am: 'የውል መፍጠሪያ',
+  },
+  birr: {
+    en: 'Birr',
+    am: 'ብር',
+  },
+  startChatting: {
+    en: 'Start chatting by typing a message below',
+    am: 'በታች መልእክት በመጻፍ መነሻ ይነጋገሩ',
+  },
+  selectChat: {
+    en: 'Select a chat to start messaging',
+    am: 'ለመልእክት መጀመሪያ ያስመልከቱ ቻትን ይምረጡ',
+  },
+  noChatsAvailable: {
+    en: 'No chats available.',
+    am: 'ምንም ቻቶች አልተገኙም።',
+  }
+  ,
   Logout: {
     en: 'Logout',
     am: 'ውጣ',

@@ -19,23 +19,22 @@
           <i class="ri-vip-crown-2-line text-6xl text-yellow-500"></i>
         </div>
         <h2 class="text-2xl font-bold mb-4 text-gray-800 dark:text-white">
-          Unlock Premium Features
+          {{ t('unlockPremiumFeatures') }}
         </h2>
         <p class="mb-6 text-gray-600 dark:text-gray-300">
-          Upgrade to a Pro account to create and manage your own bots. Enjoy exclusive features and take your experience
-          to the next level!
+          {{ t('upgradeToPro') }}
         </p>
         <div class="flex justify-center">
           <BuyPremiumBtn />
         </div>
         <p class="mt-4 text-sm text-gray-500 dark:text-gray-400">
-          With a Pro account, you can create customized bot for our own personal use!.
-        </p>
+          {{ t('proAccountBenefit') }}
+          </p>
       </div>
     </div>
 
     <div v-else class="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-white p-4 md:p-8">
-      <h1 class="text-3xl font-bold mb-6 text-center">Contract Generator</h1>
+      <h1 class="text-3xl font-bold mb-6 text-center">{{ t('contractGenerator') }}</h1>
 
       <!-- Contract Details -->
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-4">
@@ -149,6 +148,9 @@ import RichTextEditor  from '@/components/Basics/RichTextEditor.vue';
 const authStore = useAuthStore();
 const userStore = useUserStore();
 import { MyToast } from '@/utils/toast';
+import { useLanguageStore } from '@/stores/languageStore';
+
+const { t } = useLanguageStore(); // Translation function
 
 
 const contracts = ref([]);

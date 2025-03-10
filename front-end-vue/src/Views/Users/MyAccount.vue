@@ -1,7 +1,7 @@
 <template>
   <div class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
     <div class="container mx-auto px-4 py-8 flex flex-col justify-center items-center">
-      <h1 class="text-3xl font-bold mb-8 hidden md:block text-left ">My Account</h1>
+      <h1 class="text-3xl font-bold mb-8 hidden md:block text-left ">{{ t('myAccount') }}</h1>
 
 
       <!-- Loading state -->
@@ -33,20 +33,20 @@
           </div>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="hidden md:block">
-              <h3 class="text-lg font-semibold mb-2">Email</h3>
+              <h3 class="text-lg font-semibold mb-2">{{ t('email') }}</h3>
               <p>{{ userModel.email }}</p>
             </div>
             <div class="p-2">
-              <h3 class="text-lg font-semibold mb-2 ">Account Type</h3>
+              <h3 class="text-lg font-semibold mb-2 ">{{ t('accountType') }}</h3>
               <p class="capitalize">{{ userModel?.proAccount ? "Premium" : "Free" }}</p>
               <!-- Premium Upgrade Available -->
               <div v-if="userModel?.proAccount == false"
                 class="p-2 bg-white dark:bg-gray-800 mt-2 rounded-lg shadow-md">
                 <h2 class="text-xl font-semibold text-gray-800 dark:text-white">
-                  Premium Upgrade Available!
-                </h2>
+                  {{ t('premiumUpgradeAvailable') }}
+                                </h2>
                 <p class="mt-2 text-gray-600 dark:text-gray-300">
-                  Unlock advanced features and improve your experience.
+                  {{ t('unlockAdvancedFeatures') }}
                 </p>
                 <BuyPremiumBtn />
               </div>
@@ -86,7 +86,7 @@
             <form @submit.prevent="handlePasswordChange">
               <div class="mb-4">
                 <label for="currentPassword" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Current Password
+                  {{ t('currentPassword') }}
                 </label>
                 <div class="relative">
                   <i class="ri-lock-line absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
@@ -97,7 +97,7 @@
               </div>
               <div class="mb-4">
                 <label for="newPassword" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  New Password
+                  {{ t('newPassword') }}                
                 </label>
                 <div class="relative">
                   <i class="ri-lock-line absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
@@ -108,7 +108,7 @@
               </div>
               <div class="mb-6">
                 <label for="confirmPassword" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Confirm New Password
+                  {{ t('confirmNewPassword') }}                
                 </label>
                 <div class="relative">
                   <i class="ri-lock-line absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
@@ -120,14 +120,14 @@
               <button type="submit"
                 class="w-full bg-sky-500 hover:bg-sky-600 text-white font-bold py-2 px-4 rounded-md transition duration-300">
                 <i class="ri-lock-unlock-line mr-2"></i>
-                Change Password
+                {{ t('changePassword') }}
               </button>
             </form>
           </div>
 
           <div v-else-if="activeTab === 'paymentHistory'">
             <!-- Payment History Section -->
-            <h3 class="text-xl font-semibold mb-4">Payment History</h3>
+            <h3 class="text-xl font-semibold mb-4">{{ t('paymentHistory') }}</h3>
             <ul class="space-y-4">
               <ul class="space-y-2">
                 <div class="overflow-y-auto max-h-44">
@@ -136,11 +136,11 @@
                     class="bg-white dark:bg-gray-800 rounded-lg shadow p-3 flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-2 sm:space-y-0">
                     <div class="flex items-center space-x-3">
                       <span class="text-lg font-semibold text-green-600 dark:text-green-400">
-                        {{ payment.amount.toFixed(2) }} Birr
+                        {{ payment.amount.toFixed(2) }} {{t('birr')}}
                       </span>
                       <span class="text-sm text-gray-500 dark:text-gray-400">
                         {{ MyUtils.formatTimestamp(payment.start_date) }}
-                        <b>(1 Month)</b>
+                        <b>(1 {{ t('month') }})</b>
                       </span>
                     </div>
                     <span class="text-xs text-gray-400 dark:text-gray-500 truncate  flex items-center space-x-2">
@@ -163,12 +163,12 @@
 
           <div v-else-if="activeTab === 'settings'">
             <!-- Settings Section -->
-            <h3 class="text-xl font-semibold mb-4">Settings</h3>
+            <h3 class="text-xl font-semibold mb-4">{{ t('settings') }}</h3>
             <div class=" flex flex-col gap-3">
-              <span class="flex gap-5 justify-between w-[220px]">Change Language
+              <span class="flex gap-5 justify-between w-[220px]">{{ t('changeLanguage') }}
                 <LanguageSelector />
               </span>
-              <span class="flex gap-5 justify-between w-[220px]">Change Theme
+              <span class="flex gap-5 justify-between w-[220px]">{{ t('changeTheme') }}
                 <DarkModeToggle />
               </span>
 
@@ -178,24 +178,24 @@
                   class="flex items-center bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
                   @click="confirmDelete">
                   <i class="ri-delete-bin-line mr-2"></i>
-                  Delete Account
+                  {{ t('deleteAccount') }}
                 </button>
 
                 <!-- Confirmation Popup -->
                 <div v-if="showConfirmation"
                   class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
                   <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg">
-                    <p class="text-lg mb-4">Are you sure you want to delete this Account?</p>
+                    <p class="text-lg mb-4">{{ t('deleteAccountConfirmation') }}</p>
                     <div class="flex justify-end space-x-4">
                       <button
                         class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors duration-200"
                         @click="cancelDelete">
-                        Cancel
+                        {{ t('cancel') }}
                       </button>
                       <button
                         class="bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
                         @click="deleteFunction">
-                        Delete
+                        {{ t('delete') }}
                       </button>
                     </div>
                   </div>
@@ -224,6 +224,9 @@ import { useAuthStore } from '@/stores/authStore';
 import { useRouter } from 'vue-router';
 import { MyToast } from '@/utils/toast';
 import LoadingSpinner from "@/components/Basics/LoadingSpinner.vue";
+import { useLanguageStore } from '@/stores/languageStore';
+
+const { t } = useLanguageStore(); // Translation function
 
 const router = useRouter();
 const authStore = useAuthStore();

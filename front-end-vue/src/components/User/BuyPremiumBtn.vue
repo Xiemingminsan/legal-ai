@@ -5,10 +5,10 @@
       class="flex items-center bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-500 hover:to-yellow-700 text-white font-bold py-2 px-6 rounded-full shadow-md transition duration-300 ease-in-out"
       @click="showModal = true">
       <i class="ri-flashlight-line mr-2 animate-pulse"></i>
-      Upgrade to Premium
+      {{ t('upgrade_to_pre') }}
     </button>
     <div v-else class="inline-block ml-2 w-min bg-yellow-400 text-gray-900 text-xs font-bold px-2 py-1 rounded-full">
-      Premium
+      {{t('premium')}}
     </div>
     <!-- Centered Modal -->
     <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
@@ -18,17 +18,17 @@
           <i class="hi-outline-currency-dollar text-yellow-500 text-2xl mr-2"></i>
           <div>
             <p class="text-lg font-bold text-gray-800 dark:text-white">
-              {{ PAYMENT_AMOUNT }} Birr / Month
+              {{ PAYMENT_AMOUNT }} {{ t('birr_month')}}
             </p>
             <p class="text-sm text-gray-500 dark:text-gray-400">
-              Get access to all premium features.
+              {{ t('get_all_prem')}}
             </p>
           </div>
         </div>
 
         <!-- Features Section -->
         <h4 class="text-lg font-semibold mb-3 text-gray-700 dark:text-gray-200">
-          Premium Features:
+          {{ t('premium_features')}}
         </h4>
         <ul class="list-disc list-inside space-y-1 mb-6">
           <li v-for="(feature, index) in premiumFeatures" :key="index" class="text-sm text-gray-600 dark:text-gray-300">
@@ -53,13 +53,13 @@
           <button
             class="w-full bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-500 hover:to-yellow-700 text-white font-bold py-2 px-6 rounded-full shadow-md transition duration-300 ease-in-out"
             type="submit">
-            Proceed
+            {{t('proceed')}}
           </button>
         </form>
         <!-- Close Button -->
         <button class="mt-4 w-full text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100"
           @click="showModal = false">
-          Close
+          {{t('close')}}
         </button>
       </div>
     </div>
@@ -77,7 +77,9 @@ import { v4 as uuidv4 } from "uuid";
 const txRef = ref("");
 import { useRoute } from 'vue-router';
 import { MyToast } from "@/utils/toast";
+import { useLanguageStore } from '@/stores/languageStore';
 
+const { t } = useLanguageStore(); // Translation function
 
 const route = useRoute();
 
@@ -128,13 +130,12 @@ const showModal = ref(props.showModal);
 
 
 
-// Premium Features List
 const premiumFeatures = [
-  "Unlimited legal document generation",
-  "Priority customer support",
-  "Access to premium legal templates",
-  "Advanced AI-powered legal analysis",
-  "Customizable legal document storage",
+  t('unlimitedLegalDocs'),
+  t('prioritySupport'),
+  t('accessToPremiumTemplates'),
+  t('advancedLegalAnalysis'),
+  t('customizableStorage'),
 ];
 
 

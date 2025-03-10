@@ -7,6 +7,9 @@ import { MyToast } from '@/utils/toast';
 import ErrorRetryComp from '@/components/Basics/ErrorRetryComp.vue';
 import { useRoute } from 'vue-router';
 import LoadingSpinner from '@/components/Basics/LoadingSpinner.vue';
+import { useLanguageStore } from '@/stores/languageStore';
+
+const { t } = useLanguageStore(); // Translation function
 
 
 const route = useRoute();
@@ -132,8 +135,8 @@ const onBack = () => {
       </template>
       <template v-else>
         <div class="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
-          Select a chat to start messaging
-        </div>
+          {{ t('selectChat') }} 
+         </div>
       </template>
     </div>
   </div>
