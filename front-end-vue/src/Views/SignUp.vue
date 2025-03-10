@@ -14,6 +14,32 @@
       </div>
       <h2 class="text-2xl font-bold text-center mb-6 text-gray-800 dark:text-white">Sign Up</h2>
       <form @submit.prevent="handleSignUp">
+
+        <div class="steps-container flex justify-center mb-4">
+    <div
+      class="step w-12 h-12 rounded-full flex items-center justify-center cursor-pointer transition-all duration-300"
+      :class="{
+        'bg-sky-500 text-white scale-110': step === 1,
+        'bg-sky-300': step !== 1,
+        'hover:bg-sky-400': step !== 1
+      }"
+      @click="prevStep"
+    >
+      1
+    </div>
+    <div
+      class="step w-12 h-12 rounded-full flex items-center justify-center cursor-pointer transition-all duration-300 mx-4"
+      :class="{
+        'bg-sky-500 text-white scale-110': step === 2,
+        'bg-sky-300': step !== 2,
+        'hover:bg-sky-400': step !== 2
+      }"
+      @click="nextStep"
+    >
+      2
+    </div>
+  </div>
+
         <div v-if="step === 1">
           <div class="mb-4">
             <label for="username"
@@ -41,35 +67,6 @@
               <input v-model="email" id="email" type="email" required
                 class="pl-10 pr-4 py-2 w-full border rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 placeholder="Enter your email">
-            </div>
-          </div>
-          <div class="mb-4">
-            <label for="password"
-              class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
-            <div class="relative">
-              <i class="ri-lock-line absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-              <input v-model="password" id="password" :type="showPassword ? 'text' : 'password'" required
-                class="pl-10 pr-10 py-2 w-full border rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                placeholder="Choose a password">
-              <button type="button" @click="toggleShowPassword"
-                class="absolute right-3 top-1/2 transform -translate-y-1/2">
-                <i :class="showPassword ? 'ri-eye-off-line' : 'ri-eye-line'" class="text-gray-400"></i>
-              </button>
-            </div>
-          </div>
-          <div class="mb-6">
-            <label for="confirmPassword" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Confirm
-              Password</label>
-            <div class="relative">
-              <i class="ri-lock-line absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-              <input v-model="confirmPassword" id="confirmPassword" :type="showConfirmPassword ? 'text' : 'password'"
-                required
-                class="pl-10 pr-10 py-2 w-full border rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                placeholder="Confirm your password">
-              <button type="button" @click="toggleShowConfirmPassword"
-                class="absolute right-3 top-1/2 transform -translate-y-1/2">
-                <i :class="showConfirmPassword ? 'ri-eye-off-line' : 'ri-eye-line'" class="text-gray-400"></i>
-              </button>
             </div>
           </div>
         </div>
@@ -151,7 +148,7 @@
         <div class="mt-5 text-center">
           <p class="text-sm text-gray-600 dark:text-gray-400">
             Already Have an Account?
-          <router-link to="/signIn"
+            <router-link to="/signIn"
               class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
               Sign In
             </router-link>
@@ -180,28 +177,17 @@ const step = ref(1);
 const username = ref('');
 const name = ref('');
 const email = ref('');
-const password = ref('');
-const confirmPassword = ref('');
-const showPassword = ref(false);
-const showConfirmPassword = ref(false);
 const lawFamiliarity = ref('');
 const legalProcessUnderstanding = ref('');
 const legalTerminologyComfort = ref('');
 
-const toggleShowPassword = () => {
-  showPassword.value = !showPassword.value;
-};
-
-const toggleShowConfirmPassword = () => {
-  showConfirmPassword.value = !showConfirmPassword.value;
-};
 
 const nextStep = () => {
-  if (password.value !== confirmPassword.value) {
-    alert('Passwords do not match');
-    return;
-  }
   step.value = 2;
+};
+
+const prevStep = () => {
+  step.value = 1;
 };
 
 const handleSignUp = async () => {
@@ -210,7 +196,6 @@ const handleSignUp = async () => {
   const signupPayload = {
     username: username.value,
     email: email.value,
-    password: password.value,
     role: 'user',
     ethiopianLawKnowledge: lawFamiliarity.value,
     legalProcessUnderstanding: legalProcessUnderstanding.value,

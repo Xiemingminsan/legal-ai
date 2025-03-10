@@ -3,8 +3,47 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const authMiddleware = require("../middlewares/authMiddleware");
 const User = require("../models/User");
-
+const axios = require("axios")
 const router = express.Router();
+const Resend = require('resend')
+// Function to generate a random 6-character password
+function generateRandomPassword(length = 6) {
+  const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let password = "";
+  for (let i = 0; i < length; i++) {
+    password += characters.charAt(Math.floor(Math.random() * characters.length));
+  }
+  return password;
+}
+
+
+
+async function sendPasswordEmail(toEmail, password) {
+  const API_URL = 'https://api.resend.com/emails';
+  const API_KEY = 're_GnxX49po_K7X8LMTW51uEpuZystTSYsne'; // Replace with a secure way to store this
+
+  try {
+      const response = await axios.post(API_URL, {
+          from: 'onboarding@resend.dev',
+          to: toEmail,
+          subject: 'Your New Password',
+          html: `<p>Your new password is: <strong>${password}</strong></p>`
+      }, {
+          headers: {
+              'Authorization': `Bearer ${API_KEY}`,
+              'Content-Type': 'application/json'
+          }
+      });
+      
+      console.log('Email sent successfully:', response.data);
+      return response.data;
+  } catch (error) {
+      console.error('Error sending email:', error.response ? error.response.data : error.message);
+      throw new Error('Failed to send email');
+  }
+}
+
+
 
 // POST /api/auth/signup
 router.post("/signup", async (req, res) => {
@@ -12,7 +51,6 @@ router.post("/signup", async (req, res) => {
     const {
       username,
       email,
-      password,
       ethiopianLawKnowledge,
       legalProcessUnderstanding,
       legalTerminologyComfort,
@@ -20,14 +58,10 @@ router.post("/signup", async (req, res) => {
     } = req.body;
 
     console.log(req.body);
-    // Validate input
-    if (!username || !email || !password || !fullname) {
-      return res.status(400).json({ msg: "All fields are required" });
-    }
 
-    //Validate password
-    if (password.length < 6) {
-      return res.status(400).json({ msg: "Password must be at least 6 characters long" });
+    // Validate input
+    if (!username || !email || !fullname) {
+      return res.status(400).json({ msg: "All fields are required" });
     }
 
     // Validate email
@@ -50,6 +84,9 @@ router.post("/signup", async (req, res) => {
       return res.status(400).json({ msg: "Username or email already taken" });
     }
 
+    // Generate a random 6-character password
+    const password = generateRandomPassword();
+
     // Hash password
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
@@ -66,7 +103,10 @@ router.post("/signup", async (req, res) => {
     });
     await newUser.save();
 
-    res.status(201).json({ msg: "User registered successfully" });
+    // Send the password to the user's email
+    await sendPasswordEmail(email, password);
+
+    res.status(201).json({ msg: "User registered successfully. Check your email for the password." });
   } catch (err) {
     console.error("Error during signup:", err);
     res.status(500).json({ msg: "Server error" });
