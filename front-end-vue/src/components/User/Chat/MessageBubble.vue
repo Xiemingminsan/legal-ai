@@ -36,7 +36,7 @@
       </div>
 
       <!-- Message Text -->
-      <p v-html="formattedText"></p>
+      <div v-html="formattedText" class="markdown-content"></div>
 
       <!-- Timestamp -->
       <span v-if="message.role === 'user'" class="text-xs text-gray-300 block text-right mt-1">
@@ -60,7 +60,20 @@ const props = defineProps({
     required: true,
   },
 });
-const formattedText = computed(() => marked(props.message.text));
+const formattedText = computed(() => marked(props.message.text, { gfm: true }));
 
 console.log(props.message.file);
 </script>
+
+
+<style>
+.markdown-content ul {
+  list-style-type: disc;
+  margin-left: 20px;
+}
+
+.markdown-content ol {
+  list-style-type: decimal;
+  margin-left: 20px;
+}
+</style>
