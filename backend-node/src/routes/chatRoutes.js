@@ -168,7 +168,7 @@ router.post("/ask-ai", authMiddleware, upload.single("file"), async (req, res) =
       context,
       system_prompt,
       bot_id: bot._id.toString(),
-      top_k: "1000"
+      top_k: "100"
     });
 
     // Add image data if present
