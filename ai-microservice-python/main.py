@@ -109,9 +109,17 @@ class GlobalState:
                 # Reconstruct chunks metadata from documents
                 self.chunks_metadata = []
                 for idx, doc in enumerate(self.documents_store):
+                    # Handle both old format (bot_id) and new format (bot_ids)
+                    if 'bot_ids' in doc:
+                        bot_ids = doc['bot_ids']
+                    elif 'bot_id' in doc:
+                        bot_ids = [doc['bot_id']]
+                    else:
+                        bot_ids = []
+                    
                     chunk_metadata = ChunkMetadata(
                         doc_id=doc['doc_id'],
-                        bot_id=doc['bot_id'],
+                        bot_ids=bot_ids,  # Use bot_ids instead of bot_id
                         chunk_id=idx,
                         original_text=doc['text'],
                         processed_text=self._clean_text_for_reload(doc['text']),
@@ -133,7 +141,7 @@ class GlobalState:
                 # Update RAG processor with tokenized texts
                 self.rag_processor.tokenized_texts = self.tokenized_texts
                 self.rag_processor.update_bm25(self.tokenized_texts)
-                
+            
             except Exception as e:
                 logger.error(f"Failed to load documents store: {e}")
                 self.documents_store = []
@@ -142,13 +150,22 @@ class GlobalState:
         else:
             self.chunks_metadata = []
             self.rag_processor.update_bm25([["placeholder"]])
-        
+
         if len(self.documents_store) != len(self.chunks_metadata):
             logger.warning("State inconsistency detected during initialization. Rebuilding state...")
             self.chunks_metadata = []
             for doc in self.documents_store:
+                # Handle both old format (bot_id) and new format (bot_ids)
+                if 'bot_ids' in doc:
+                    bot_ids = doc['bot_ids']
+                elif 'bot_id' in doc:
+                    bot_ids = [doc['bot_id']]
+                else:
+                    bot_ids = []
+                    
                 chunk_metadata = ChunkMetadata(
                     doc_id=doc['doc_id'],
+                    bot_ids=bot_ids,  # Add this with bot_ids
                     chunk_id=len(self.chunks_metadata),
                     original_text=doc['text'],
                     processed_text=self._clean_text_for_reload(doc['text']),
@@ -362,7 +379,7 @@ async def embed_documents(
             for chunk_data in result["chunk_data"]:
                 doc_entry = {
                     "doc_id": doc_id,
-                    "bot_id": bot_id,
+                    "bot_ids": chunk_data["bot_ids"],  # Use bot_ids instead of bot_id
                     "title": filename,
                     "text": chunk_data["original_text"],
                     "index": len(global_state.documents_store),
@@ -374,8 +391,8 @@ async def embed_documents(
                 }
                 state_lock = asyncio.Lock()
 
-                async with state_lock:
-                    global_state.documents_store.append(doc_entry)
+            async with state_lock:
+                global_state.documents_store.append(doc_entry)
                     
             return {
                 "status": "success",
@@ -596,6 +613,37 @@ async def get_document_status(doc_id: str):
     except Exception as e:
         logger.error(f"Error getting document status: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/associate_documents_with_bot")
+async def associate_documents_with_bot(
+    bot_id: str = Form(...),
+    doc_ids: List[str] = Form(...)
+) -> Dict[str, Any]:
+    """Associate existing documents with a bot."""
+    try:
+        # Add bot_id to documents in the RAG processor
+        modified_count = await global_state.rag_processor.add_bot_to_documents(doc_ids, bot_id)
+        
+        # Also update documents_store to maintain consistency
+        for doc in global_state.documents_store:
+            if doc["doc_id"] in doc_ids:
+                if "bot_ids" not in doc:
+                    doc["bot_ids"] = [doc.get("bot_id")] if doc.get("bot_id") else []
+                if bot_id not in doc["bot_ids"]:
+                    doc["bot_ids"].append(bot_id)
+        
+        # Save the updated state
+        await global_state.save_state()
+        
+        return {
+            "status": "success", 
+            "message": f"Associated {len(doc_ids)} documents with bot {bot_id}",
+            "modified_chunks": modified_count
+        }
+    except Exception as e:
+        logger.error(f"Error associating documents: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 async def translate_to_english(text: str) -> str:
     """Helper function to translate text to English"""

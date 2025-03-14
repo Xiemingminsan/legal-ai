@@ -117,6 +117,31 @@ router.post("/add", authMiddleware, upload.array("files"), async (req, res) => {
         return res.status(400).json({ msg: "Error parsing documentIds" });
       }
     }
+
+    // In botRoutes.js after successful bot creation
+    if (documentIds && documentIds.length > 0) {
+      try {
+        const formData = new FormData();
+        formData.append('bot_id', bot._id.toString());
+        
+        // Add each document ID to the form data
+        JSON.parse(documentIds).forEach(docId => {
+          formData.append('doc_ids', docId);
+        });
+        
+        // Call the endpoint to associate documents
+        const aiServiceUrl = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+        await axios.post(`${aiServiceUrl}/associate_documents_with_bot`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        
+        console.log(`Associated existing documents with bot ${bot._id}`);
+      } catch (error) {
+        console.error('Error associating documents with bot:', error);
+        // Continue anyway since the bot was created successfully
+      }
+    }
+    
     await bot.save();
 
     res.status(201).json({
