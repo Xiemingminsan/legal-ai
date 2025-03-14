@@ -5,6 +5,7 @@ const authMiddleware = require("../middlewares/authMiddleware");
 const Bot = require("../models/Bot");
 const Document = require("../models/Document");
 const { uploadDocument } = require("../helpers/utils");
+const axios = require('axios'); // Make sure axios is imported
 
 //Add bots
 const multer = require("multer");
@@ -141,7 +142,7 @@ router.post("/add", authMiddleware, upload.array("files"), async (req, res) => {
         // Continue anyway since the bot was created successfully
       }
     }
-    
+
     await bot.save();
 
     res.status(201).json({
