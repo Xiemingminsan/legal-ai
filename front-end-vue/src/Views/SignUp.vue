@@ -212,6 +212,7 @@ const handleSignUp = async () => {
 
   router.push('/signin'); // Redirect to the homepage on success
   MyToast.success(response.msg);
+  console.log("LOGIN_PASSWORD!!!!:", response.password);
 };
 
 
