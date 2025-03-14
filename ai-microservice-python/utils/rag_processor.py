@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 class ChunkMetadata:
     """Metadata for each chunk including original text and search-related info."""
     doc_id: str
-    bot_id: str
+    bot_id: List[str]
     chunk_id: int
     original_text: str
     processed_text: str
@@ -104,11 +104,12 @@ class RAGProcessor:
         """Process a document asynchronously with smart chunking and parallel processing."""
         try:
             # Generate chunks with proper boundaries
+            bot_ids = [bot_id] if isinstance(bot_id, str) else bot_id
             chunks = await self._generate_smart_chunks(text)
             logger.info(f"Generated {len(chunks)} chunks for document {doc_id}")
 
             # Process chunks in parallel
-            chunk_data = await self._process_chunks(doc_id, bot_id, chunks, language)
+            chunk_data = await self._process_chunks(doc_id, bot_ids, chunks, language)
             
             # Update search indices
             self._update_search_indices(chunk_data)
@@ -118,24 +119,24 @@ class RAGProcessor:
             
             # Return processed data
             return {
-                "doc_id": doc_id,
-                "num_chunks": len(chunks),
-                "success": True,
-                "metadata": self._generate_doc_metadata(chunk_data),
-                "chunk_data": [
-                    {
-                        "doc_id": chunk.doc_id,
-                        "bot_id": bot_id,
-                        "chunk_id": chunk.chunk_id,
-                        "original_text": chunk.original_text,
-                        "processed_text": chunk.processed_text,
-                        "embedding_idx": chunk.embedding_idx,
-                        "special_matches": chunk.special_matches,
-                        "language": chunk.language
-                    }
-                    for chunk in chunk_data
-                ]
-            }
+            "doc_id": doc_id,
+            "num_chunks": len(chunks),
+            "success": True,
+            "metadata": self._generate_doc_metadata(chunk_data),
+            "chunk_data": [
+                {
+                    "doc_id": chunk.doc_id,
+                    "bot_ids": chunk.bot_ids,  # Use bot_ids consistently here
+                    "chunk_id": chunk.chunk_id,
+                    "original_text": chunk.original_text,
+                    "processed_text": chunk.processed_text,
+                    "embedding_idx": chunk.embedding_idx,
+                    "special_matches": chunk.special_matches,
+                    "language": chunk.language
+                }
+                for chunk in chunk_data
+            ]
+        }
 
         except Exception as e:
             logger.error(f"Error processing document {doc_id}: {e}")
@@ -228,16 +229,16 @@ class RAGProcessor:
         return chunks
 
     async def _process_chunks(
-        self, 
-        doc_id: str,
-        bot_id: str,
-        chunks: List[str], 
-        language: str = "en"
-    ) -> List[ChunkMetadata]:
-        """
-        Process chunks in parallel based on the specified language.
-        """
-        async def process_chunk(chunk: str, chunk_id: int, bot_id: str, language: str = "en") -> ChunkMetadata:
+    self, 
+    doc_id: str,
+    bot_ids: List[str],  # Changed parameter type to List
+    chunks: List[str], 
+    language: str = "en"
+) -> List[ChunkMetadata]:
+        """Process chunks in parallel based on the specified language."""
+        
+        async def process_chunk(chunk: str, chunk_id: int, bot_ids: List[str], language: str = "en") -> ChunkMetadata:
+            # Function signature fixed to use bot_ids
             if language == "amh":
                 processed_text = self.stem_text(chunk)
             else:
@@ -245,13 +246,13 @@ class RAGProcessor:
             
             # Find special matches
             special_matches = {
-                name: pattern.findall(chunk)
-                for name, pattern in self.special_patterns.items()
-            }
-            
+            name: pattern.findall(chunk)
+            for name, pattern in self.special_patterns.items()
+        }
+        
             return ChunkMetadata(
                 doc_id=doc_id,
-                bot_id=bot_id,
+                bot_ids=bot_ids,  # Use bot_ids instead of bot_id
                 chunk_id=chunk_id,
                 original_text=chunk,
                 processed_text=processed_text,
@@ -261,7 +262,7 @@ class RAGProcessor:
             )
         
         # Pass the language parameter to process_chunk
-        tasks = [process_chunk(chunk, i, language) for i, chunk in enumerate(chunks)]
+        tasks = [process_chunk(chunk, i, bot_ids, language) for i, chunk in enumerate(chunks)]
         return await asyncio.gather(*tasks)
 
     async def _clean_text(self, text: str) -> str:
@@ -344,14 +345,36 @@ class RAGProcessor:
             logger.error(f"Error clearing indices: {e}")
             raise
 
+    async def add_bot_to_documents(self, doc_ids: List[str], bot_id: str) -> int:
+        """
+        Add a bot ID to existing documents.
+        Returns the number of chunks modified.
+        """
+        if not bot_id:
+            raise ValueError("bot_id cannot be empty")
+            
+        modified_count = 0
+        for chunk in self.chunks_metadata:
+            if chunk.doc_id in doc_ids:
+                # Initialize bot_ids as empty list if it doesn't exist
+                if not hasattr(chunk, 'bot_ids'):
+                    chunk.bot_ids = []
+                    
+                # Add bot_id if not already present
+                if bot_id not in chunk.bot_ids:
+                    chunk.bot_ids.append(bot_id)
+                    modified_count += 1
+                
+        logger.info(f"Added bot {bot_id} to {modified_count} document chunks")
+        return modified_count
+
     async def search(
     self,
     query: str,
     top_k: int = 5,
     semantic_weight: float = 0.5,
     bot_id: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
-        """Hybrid search with direct bot_id filtering using chunk metadata."""
+) -> List[Dict[str, Any]]:
         try:
             # Validate inputs
             if top_k <= 0:
@@ -362,18 +385,17 @@ class RAGProcessor:
                 return []
 
             # Clean and preprocess query
-            
             if self.nlp.meta["lang"] == "en":
                 cleaned_query = await self._clean_text(query)
             else:
                 cleaned_query = self.stem_text(query)
 
-            # Get allowed indices using direct bot_id check
+            # KEY CHANGE: Check if bot_id is in the bot_ids list
             allowed_indices = [
                 idx for idx, chunk in enumerate(self.chunks_metadata)
-                if not bot_id or chunk.bot_id == bot_id
+                if not bot_id or bot_id in chunk.bot_ids
             ]
-            
+        
             if not allowed_indices:
                 logger.info(f"No documents found for bot {bot_id}" if bot_id else "No documents in index")
                 return []
@@ -426,7 +448,7 @@ class RAGProcessor:
             # Format results with chunk metadata
             return [{
                 "doc_id": self.chunks_metadata[idx].doc_id,
-                "bot_id": self.chunks_metadata[idx].bot_id,
+                "bot_ids": self.chunks_metadata[idx].bot_ids,
                 "chunk_id": self.chunks_metadata[idx].chunk_id,
                 "text": self.chunks_metadata[idx].original_text,
                 "score": float(score),
