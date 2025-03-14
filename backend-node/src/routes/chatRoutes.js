@@ -10,6 +10,7 @@ const multer = require("multer");
 const path = require("path");
 const { processUploadedFile } = require("../helpers/extractor");
 const { Types, Schema } = mongoose;
+const SystemPrompt=require('../models/SystemPrompt');   
 
 // Configure multer storage
 const storage = multer.diskStorage({
@@ -108,6 +109,8 @@ router.post("/ask-ai", authMiddleware, upload.single("file"), async (req, res) =
       return res.status(404).json({ msg: "Bot not found" });
     }
 
+
+
     // Add message to conversation
     conversation.conversation.push({
       role: "user",
@@ -132,6 +135,27 @@ router.post("/ask-ai", authMiddleware, upload.single("file"), async (req, res) =
         `Chunk from doc ${chunk.doc_id}:\n${chunk.text}`
       )
     ].filter(Boolean).join("\n");
+
+    systemPrompt=await SystemPrompt.findOne();
+    
+    const user = await User.findById(userId);
+
+    formattedKnowledge='';
+
+    if (user) {
+      formattedKnowledge = `Logged in User's Legal Knowledge, use this into context when anwering:
+    - Ethiopian Law Knowledge: ${user.ethiopianLawKnowledge || "Unknown"} From  (Beginner / Intermediate / Expert)
+    - Legal Process Understanding: ${user.legalProcessUnderstanding || "Unknown"} From  (Low / Moderate / High)
+    - Legal Terminology Comfort: ${user.legalTerminologyComfort || "Unknown"} From  (Not Comfortable / Somewhat Comfortable / Very Comfortable)`;
+
+        console.log(formattedKnowledge);
+    }
+
+
+
+    
+    // add meeeee
+    prompt=systemPrompt.prompt
 
     // Call AI service with enhanced payload
     const aiServiceUrl = process.env.AI_SERVICE_URL || "http://localhost:8000";
