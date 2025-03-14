@@ -18,7 +18,7 @@ export default defineConfig({
         short_name: 'Et Legal Bot',
         description: 'Instant Legal Information',
         theme_color: '#42b983',
-        start_url: '/',
+        start_url: "/",
         display: 'standalone',
         background_color: '#ffffff',
         icons: [

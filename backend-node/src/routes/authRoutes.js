@@ -19,7 +19,7 @@ function generateRandomPassword(length = 6) {
 
 
 async function sendPasswordEmail(toEmail, password) {
-  const My_EMAIL = 'ET-legal-bot@mailslurp.biz';
+  const My_EMAIL = 'user-4b019f2e-6bdf-4158-a668-e5aaacb26fea@mailslurp.biz';
 
   // Configure the mail transporter
   const transport = nodemailer.createTransport({
@@ -99,7 +99,7 @@ router.post("/signup", async (req, res) => {
       await sendPasswordEmail(email, password);
     } catch (emailError) {
       console.error("Error sending email:", emailError);
-      return res.status(500).json({ msg: "Failed to send password email. Try again later." });
+      return res.status(400).json({ msg: "Failed to send password email. Try again later." });
     }
 
     // Hash password
