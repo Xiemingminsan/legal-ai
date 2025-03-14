@@ -88,6 +88,7 @@
         <RAGSearch v-if="currentTab === 'rag'" :botId="bot._id" />
         <FIASSIndex v-else-if="currentTab === 'fiass'" />
         <AdminUploadedDocuments v-else-if="currentTab === 'documents'" :documents="bot.documents" />
+        <BotFeedback v-else-if="currentTab === 'feedback'" :botId="bot._id" />
       </div>
     </div>
   </div>
@@ -103,7 +104,7 @@ import { useAdminStore } from '@/stores/adminStore';
 import { MyToast } from '@/utils/toast';
 import ErrorRetryComp from '@/components/Basics/ErrorRetryComp.vue';
 import LoadingSpinner from '@/components/Basics/LoadingSpinner.vue';
-
+import BotFeedback from '@/components/User/BotFeedback.vue';
 const route = useRoute();
 const router = useRouter();
 const adminStore = useAdminStore();
@@ -163,7 +164,9 @@ const tabs = [
   { id: 'rag', name: 'RAG Search' },
   { id: 'fiass', name: 'FIASS Index' },
   { id: 'documents', name: 'Uploaded Documents' },
+  { id: 'feedback', name: 'User Feedback' },
 ];
+
 
 const currentTab = ref('rag');
 

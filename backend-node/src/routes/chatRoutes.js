@@ -151,14 +151,11 @@ router.post("/ask-ai", authMiddleware, upload.single("file"), async (req, res) =
       
       console.log(formattedKnowledge);
     }
+
     
     // Concatenate system prompt and formatted knowledge into one variable
-    let system_prompt = `${systemPrompt.prompt}\n\n${formattedKnowledge}`;    
+    system_prompt = `${systemPrompt.prompt}\n\n${formattedKnowledge}\n\n${bot.systemPrompt}`;
     // Concatenate system prompt and formatted knowledge
-
-    
-    // add meeeee
-
 
     // Call AI service with enhanced payload
     const aiServiceUrl = process.env.AI_SERVICE_URL || "http://localhost:8000";
