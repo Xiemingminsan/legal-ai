@@ -343,8 +343,8 @@ async def embed_documents(
     if len(doc_ids) != len(bot_ids) or len(bot_ids) != len(pdf_paths):
         raise HTTPException(status_code=400, detail="Mismatched input lengths")
     
-    print("doc_ids",doc_ids)
-    print("bot_ids",bot_ids)
+    print("doc_ids", doc_ids)
+    print("bot_ids", bot_ids)
 
     async def process_single_document(idx: int):
         try:
@@ -375,24 +375,23 @@ async def embed_documents(
                 if doc["doc_id"] != doc_id
             ]
 
-            # Add new entries from the processed chunks
-            for chunk_data in result["chunk_data"]:
-                doc_entry = {
-                    "doc_id": doc_id,
-                    "bot_ids": chunk_data["bot_ids"],  # Use bot_ids instead of bot_id
-                    "title": filename,
-                    "text": chunk_data["original_text"],
-                    "index": len(global_state.documents_store),
-                    "uploadDate": current_time,
-                    "docScope": doc_scope,
-                    "category": category,
-                    "language": language,
-                    "status": "completed"
-                }
-                state_lock = asyncio.Lock()
-
+            # Create lock once and use it to guard appending each entry
+            state_lock = asyncio.Lock()
             async with state_lock:
-                global_state.documents_store.append(doc_entry)
+                for chunk_data in result["chunk_data"]:
+                    doc_entry = {
+                        "doc_id": doc_id,
+                        "bot_ids": chunk_data["bot_ids"],  # Use bot_ids consistently
+                        "title": filename,
+                        "text": chunk_data["original_text"],
+                        "index": len(global_state.documents_store),
+                        "uploadDate": current_time,
+                        "docScope": doc_scope,
+                        "category": category,
+                        "language": language,
+                        "status": "completed"
+                    }
+                    global_state.documents_store.append(doc_entry)
                     
             return {
                 "status": "success",
@@ -411,7 +410,7 @@ async def embed_documents(
     # Save state after processing all documents
     try:
         await global_state.save_state()
-        await reload_state()  # Add this line
+        await reload_state()  # Reload state if needed
     except Exception as e:
         logger.error(f"Error saving global state: {e}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail="Failed to save state after processing documents")
@@ -508,6 +507,7 @@ async def rag_qa(
     context: str = Form(...), 
     bot_id: str = Form(...),  # Add this
     top_k: int = Form(3), 
+    system_prompt: Optional[str] = Form(" "),
     language: Optional[str] = Form("en")
 ):
     try:
@@ -535,7 +535,7 @@ async def rag_qa(
         "parts": [
             {
                 "text": (
-                    f"You are a highly contextual assistant designed to answer questions based only on the provided information. "
+                    f"You are a highly contextual legal assistant designed to answer questions based only on the provided information. "
                     f"Follow these rules when answering user queries:\n\n"
 
                     f"1. Always prioritize context in the following order:\n"
@@ -576,6 +576,7 @@ async def rag_qa(
                     f"Now, answer this query naturally without explicitly stating that you are using context:\n\n"
                     f"USER QUERY ({query_language}): {query}\n\n"
                     f"CONTEXT:\n{context_str}\n\n"
+                    f"sub-system-prompt:\n {system_prompt.upper()}:"
                     f"YOUR ANSWER IN {query_language.upper()}:"
                 )
             }

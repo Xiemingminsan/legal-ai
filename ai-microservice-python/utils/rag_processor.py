@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 class ChunkMetadata:
     """Metadata for each chunk including original text and search-related info."""
     doc_id: str
-    bot_id: List[str]
+    bot_ids: List[str]  # Changed field name from bot_id to bot_ids
     chunk_id: int
     original_text: str
     processed_text: str
