@@ -10,6 +10,7 @@ const multer = require("multer");
 const path = require("path");
 const { processUploadedFile } = require("../helpers/extractor");
 const { Types, Schema } = mongoose;
+const User = require('../models/User');
 const SystemPrompt=require('../models/SystemPrompt');   
 
 // Configure multer storage
@@ -140,22 +141,24 @@ router.post("/ask-ai", authMiddleware, upload.single("file"), async (req, res) =
     
     const user = await User.findById(userId);
 
-    formattedKnowledge='';
+    let formattedKnowledge = '';
 
     if (user) {
-      formattedKnowledge = `Logged in User's Legal Knowledge, use this into context when anwering:
-    - Ethiopian Law Knowledge: ${user.ethiopianLawKnowledge || "Unknown"} From  (Beginner / Intermediate / Expert)
-    - Legal Process Understanding: ${user.legalProcessUnderstanding || "Unknown"} From  (Low / Moderate / High)
-    - Legal Terminology Comfort: ${user.legalTerminologyComfort || "Unknown"} From  (Not Comfortable / Somewhat Comfortable / Very Comfortable)`;
-
-        console.log(formattedKnowledge);
+      formattedKnowledge = `Logged in User's Legal Knowledge, use this into context when answering:
+      - Ethiopian Law Knowledge: ${user.ethiopianLawKnowledge || "Unknown"} From (Beginner / Intermediate / Expert)
+      - Legal Process Understanding: ${user.legalProcessUnderstanding || "Unknown"} From (Low / Moderate / High)
+      - Legal Terminology Comfort: ${user.legalTerminologyComfort || "Unknown"} From (Not Comfortable / Somewhat Comfortable / Very Comfortable)`;
+      
+      console.log(formattedKnowledge);
     }
-
-
+    
+    // Concatenate system prompt and formatted knowledge into one variable
+    let system_prompt = `${systemPrompt.prompt}\n\n${formattedKnowledge}`;    
+    // Concatenate system prompt and formatted knowledge
 
     
     // add meeeee
-    prompt=systemPrompt.prompt
+
 
     // Call AI service with enhanced payload
     const aiServiceUrl = process.env.AI_SERVICE_URL || "http://localhost:8000";
@@ -163,6 +166,7 @@ router.post("/ask-ai", authMiddleware, upload.single("file"), async (req, res) =
       language: language || "en",
       query,
       context,
+      system_prompt,
       bot_id: bot._id.toString(),
       top_k: "1000"
     });

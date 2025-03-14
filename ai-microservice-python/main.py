@@ -556,6 +556,7 @@ async def rag_qa(
                     f"   - Concise and factual.\n"
                     f"   - Integrated naturally into the response without robotic phrasing like 'According to the context' or 'Based on the provided information.'\n"
                     f"   - Polite and professional.\n\n"
+                    f"   - if asked to describe more or anything of the sort like explain more, break down and explain using more words.\n\n"
                     f"   - use markdown to format your response.\n\n"
 
                     f"6. **Handling Opinion-Based Questions:**\n"
