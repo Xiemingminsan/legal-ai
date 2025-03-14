@@ -507,6 +507,7 @@ async def rag_qa(
     context: str = Form(...), 
     bot_id: str = Form(...),  # Add this
     top_k: int = Form(3), 
+    system_prompt: Optional[str] = Form(" "),
     language: Optional[str] = Form("en")
 ):
     try:
@@ -575,6 +576,7 @@ async def rag_qa(
                     f"Now, answer this query naturally without explicitly stating that you are using context:\n\n"
                     f"USER QUERY ({query_language}): {query}\n\n"
                     f"CONTEXT:\n{context_str}\n\n"
+                    f"sub-system-prompt:\n {system_prompt.upper()}:"
                     f"YOUR ANSWER IN {query_language.upper()}:"
                 )
             }
