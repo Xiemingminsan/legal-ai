@@ -466,7 +466,7 @@ const handleCategoryChange = () => {
 
 const fetchIcons = () => {
   // Assuming the icons are named in a predictable way, e.g., icon1.png, icon2.png, ...
-  const iconCount = 5;
+  const iconCount = 12;
   const basePath = '/botIcons/';
 
   botIcons.value = Array.from({ length: iconCount }, (_, i) => `${basePath}bot${i + 1}.png`);
