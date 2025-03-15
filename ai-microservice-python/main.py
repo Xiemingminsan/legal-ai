@@ -429,7 +429,7 @@ async def embed_documents(
 # In main.py, add this helper function
 async def associate_with_general_bot(doc_ids):
     """Simple helper to associate documents with the general bot"""
-    general_bot_id = '67d4983d625682b5cc1a4447'
+    general_bot_id = '67d4b83762342b42e90eec51'
     if not general_bot_id:
         logger.warning("GENERAL_BOT_ID not found in environment variables. Skipping general bot association.")
         return False

@@ -104,7 +104,7 @@ router.get("/", authMiddleware, async (req, res) => {
   try {
     const query = req.user.role === "admin" ? {} : { uploaderId: req.user.userId };
 
-    const docs = await Document.find(query).sort({ uploadDate: -1 });
+    const docs = await Document.find({ ...query, docScope: { $ne: "private" } }).sort({ uploadDate: -1 });
     res.json(docs);
   } catch (err) {
     console.error(err);

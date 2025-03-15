@@ -19,7 +19,7 @@
     </div>
   </div>
   <div v-else>
-    <CreateNewBot show-uploaded-files=false />
+    <CreateNewBot show-uploaded-files=true />
   </div>
 </template>
 <script setup>
