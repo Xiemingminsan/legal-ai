@@ -78,7 +78,8 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import MyHttpService from '@/stores/MyHttpService';
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useUserStore } from '@/stores/userStore';
 import { MyToast } from '@/utils/toast';
@@ -90,6 +91,11 @@ const router = useRouter();
 const userStore = useUserStore();
 const isLoading = ref(false);
 
+const botRating = ref({
+  averageRating: 0,
+  totalRatings: 0
+});
+
 const props = defineProps({
   bot: {
     type: Object,
@@ -99,7 +105,19 @@ const props = defineProps({
     type: Boolean,
     default: false
   }
+  
 });
+
+const fetchBotRating = async () => {
+  try {
+    const response = await MyHttpService.get(`/feedback/${props.bot._id}`);
+    if (!response.error && response.stats) {
+      botRating.value = response.stats;
+    }
+  } catch (error) {
+    console.error('Error fetching bot rating:', error);
+  }
+};
 
 const onBotClicked = async () => {
   isLoading.value = true;
@@ -117,5 +135,9 @@ const onBotClicked = async () => {
     query: { conversationId: response.conversationId }
   });
 };
+
+onMounted(() => {
+  fetchBotRating();
+});
 </script>
 

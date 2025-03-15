@@ -137,8 +137,8 @@ const askAi = async () => {
   const message = messageToSend.value.trim();
   if (!message) return;
 
-  if (message.length > 400) {
-    MyToast.error("Message is too long. Please keep it under 200 characters.");
+  if (message.length > 1000) {
+    MyToast.error("Message is too long. Please keep it under 1000 characters.");
     return;
   }
 

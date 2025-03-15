@@ -410,13 +410,14 @@ async def embed_documents(
     # Save state after processing all documents
     try:
         await global_state.save_state()
+        await associate_with_general_bot(doc_ids)
         await reload_state()  # Reload state if needed
     except Exception as e:
         logger.error(f"Error saving global state: {e}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail="Failed to save state after processing documents")
 
     # Separate successes and errors
-    successes = [res for res in results if "error" not in res]
+    successes = [res for res in results if "error" not in res]  
     errors = [res for res in results if "error" in res]
 
     return {
@@ -424,6 +425,32 @@ async def embed_documents(
         "results": successes,
         "errors": errors
     }
+
+# In main.py, add this helper function
+async def associate_with_general_bot(doc_ids):
+    """Simple helper to associate documents with the general bot"""
+    general_bot_id = '67d4983d625682b5cc1a4447'
+    if not general_bot_id:
+        logger.warning("GENERAL_BOT_ID not found in environment variables. Skipping general bot association.")
+        return False
+        
+    try:
+        # Use your existing function to associate documents
+        await global_state.rag_processor.add_bot_to_documents(doc_ids, general_bot_id)
+        
+        # Update documents_store for consistency
+        for doc in global_state.documents_store:
+            if doc["doc_id"] in doc_ids:
+                if "bot_ids" not in doc:
+                    doc["bot_ids"] = [doc.get("bot_id")] if doc.get("bot_id") else []
+                if general_bot_id not in doc["bot_ids"]:
+                    doc["bot_ids"].append(general_bot_id)
+        
+        await global_state.save_state()
+        return True
+    except Exception as e:
+        logger.error(f"Error associating documents with general bot: {e}")
+        return False
 
 @app.post("/search")
 async def search_similar_chunks(
@@ -530,6 +557,16 @@ async def rag_qa(
         query_language = language
         print("query_language",query_language)
 
+        file_content = None
+        file_type = None
+        file_markers = ["This is the File or Image content the user sent inline", "File content:"]
+        
+        for marker in file_markers:
+            if marker in context:
+                # Extract the file content part
+                file_start = context.find(marker)
+                file_content_part = context[file_start:]
+
         payload = {
     "contents": [{
         "parts": [
@@ -556,6 +593,7 @@ async def rag_qa(
                     f"   - Concise and factual.\n"
                     f"   - Integrated naturally into the response without robotic phrasing like 'According to the context' or 'Based on the provided information.'\n"
                     f"   - Polite and professional.\n\n"
+                    f"   - if asked to describe more or anything of the sort like explain more, break down and explain using more words.\n\n"
                     f"   - use markdown to format your response.\n\n"
 
                     f"6. **Handling Opinion-Based Questions:**\n"
@@ -572,6 +610,10 @@ async def rag_qa(
 
                     f"8. If the context is insufficient:\n"
                     f"   - Ask the user to clarify or rephrase their query in their language.\n\n"
+
+                    f"9. **File Handling Instructions:**\n"
+                    f"   - The user has {f'included a file in their message. The file content is included in the context.' if file_content else 'not included any file in their message.'}\n"
+                    f"   - If file content is present, analyze it and incorporate relevant information in your response.\n\n"
 
                     f"Now, answer this query naturally without explicitly stating that you are using context:\n\n"
                     f"USER QUERY ({query_language}): {query}\n\n"
