@@ -66,6 +66,8 @@ __pycache__/
 .eggs/
 *.env
 *.venv
+
+sw.js
 .env/
 venv/
 ENV/
